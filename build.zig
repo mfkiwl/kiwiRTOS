@@ -17,11 +17,11 @@ pub fn build(b: *std.Build) anyerror!void {
         .code_model = .medium,
     });
 
-    kernel.setLinkerScriptPath(b.path("src/linker.lds"));
+    kernel.setLinkerScriptPath(b.path("src/arch/riscv/linker.lds"));
     // Some of the boot-code changes depending on if we're targeting 32-bit
     // or 64-bit, which is why we need the pre-processor to run first.
     kernel.addCSourceFiles(.{
-        .files = &.{"src/boot.S"},
+        .files = &.{"src/arch/riscv/boot.S"},
         .flags = &.{
             "-x", "assembler-with-cpp",
         },
