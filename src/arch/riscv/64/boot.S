@@ -1,3 +1,7 @@
+# boot.S
+# bootloader for kiwiRTOS
+# Miguel Villa Floran
+# 6 October 2024
 .option norvc
 .section .data
 

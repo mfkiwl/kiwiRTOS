@@ -1,5 +1,5 @@
 const std = @import("std");
-const uart = @import("uart.zig");
+const uart = @import("drivers/uart.zig");
 
 // Here we set up a printf-like writer from the standard library by providing
 // a way to output via the UART.
