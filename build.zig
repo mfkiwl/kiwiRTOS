@@ -36,6 +36,14 @@ pub fn build(b: *std.Build) anyerror!void {
                 .abi = .none,
             }
         }),
+        .x86_64 => b.standardTargetOptions(.{
+            .default_target = .{
+                .cpu_arch = .x86_64,
+                .os_tag = .freestanding,
+                .abi = .none,
+            }
+        }),
+        else => unreachable,
     };
 
     const kernel = b.addExecutable(.{
@@ -51,6 +59,7 @@ pub fn build(b: *std.Build) anyerror!void {
         .riscv32 => "src/arch/riscv/32/linker.lds",
         .riscv64 => "src/arch/riscv/64/linker.lds",
         .arm => "src/arch/arm/linker.lds",
+        .x86_64 => "src/arch/x86_64/linker.lds",
         else => unreachable,
     };
 
