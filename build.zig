@@ -36,14 +36,6 @@ pub fn build(b: *std.Build) anyerror!void {
                 .abi = .none,
             }
         }),
-        .x86_64 => b.standardTargetOptions(.{
-            .default_target = .{
-                .cpu_arch = .x86_64,
-                .os_tag = .freestanding,
-                .abi = .none,
-            }
-        }),
-        else => unreachable,
     };
 
     const kernel = b.addExecutable(.{
