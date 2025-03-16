@@ -67,15 +67,15 @@ To get a local copy of the project up and running on your machine, follow these 
 ## Project Structure
 
 ```sh
-kiwiRTOS/
+.kiwiRTOS/
 ├── .github/                       - GitHub Actions CI/CD workflows
-├── scripts/                       - Standalone scripts
-├── shared/
-│   └── utils/                     - Shared utility functions
+├── build.zig                      - Zig build file
 ├── src/                           - Project packages
-│   ├── core/                      - Core application logic
-│   └── ...                        - Other packages
-├── tests/                         - Project tests (mirrors the main project structure)
+│   ├── arch/                      - Architecture specific code
+│   ├── drivers/                   - Device drivers
+│   ├── kernel/                    - Kernel code
+│   ├── lib/                       - Library code
+│   └── tests/                     - Project tests
 ├── LICENSE                        - Project license
 └── README.md                      - You are here
 ```
