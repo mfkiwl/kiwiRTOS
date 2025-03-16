@@ -8,4 +8,3 @@ pub const KernelAllocator = struct {
 pub fn initializeMMU() void {
     // Initialize Memory Management Unit
 }
-

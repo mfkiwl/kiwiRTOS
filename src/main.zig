@@ -4,7 +4,7 @@ const uart = @import("drivers/uart.zig");
 // Here we set up a printf-like writer from the standard library by providing
 // a way to output via the UART.
 const Writer = std.io.Writer(u32, error{}, uart_put_str);
-const uart_writer = Writer { .context = 0 };
+const uart_writer = Writer{ .context = 0 };
 
 fn uart_put_str(_: u32, str: []const u8) !usize {
     for (str) |ch| {
@@ -31,5 +31,5 @@ export fn kmain() callconv(.C) void {
     // and printing a simple message to make sure the kernel has started!
     uart.init();
     // Who knows, maybe in the future we'll have rv128...
-    println("Zig is running on barebones RISC-V (rv{})!", .{ @bitSizeOf(usize) });
+    println("Zig is running on barebones RISC-V (rv{})!", .{@bitSizeOf(usize)});
 }

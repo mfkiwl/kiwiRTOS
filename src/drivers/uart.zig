@@ -4,21 +4,20 @@ pub const UART = struct {
     // UART driver implementation
 };
 
-
 // The default UART serial device is at 0x10000000 on the QEMU RISC-V virt platform
 const uart_base: usize = 0x10000000;
 
-const UART_RBR_OFFSET = 0;   // In:  Recieve Buffer Register
-const UART_DLL_OFFSET = 0;   // Out: Divisor Latch Low
-const UART_IER_OFFSET = 1;   // I/O: Interrupt Enable Register
-const UART_DLM_OFFSET = 1;   // Out: Divisor Latch High
-const UART_FCR_OFFSET = 2;   // Out: FIFO Control Register
-const UART_LCR_OFFSET = 3;   // Out: Line Control Register
-const UART_LSR_OFFSET = 5;   // In:  Line Status Register
-const UART_MDR1_OFFSET = 8;  // I/O:  Mode Register
+const UART_RBR_OFFSET = 0; // In:  Recieve Buffer Register
+const UART_DLL_OFFSET = 0; // Out: Divisor Latch Low
+const UART_IER_OFFSET = 1; // I/O: Interrupt Enable Register
+const UART_DLM_OFFSET = 1; // Out: Divisor Latch High
+const UART_FCR_OFFSET = 2; // Out: FIFO Control Register
+const UART_LCR_OFFSET = 3; // Out: Line Control Register
+const UART_LSR_OFFSET = 5; // In:  Line Status Register
+const UART_MDR1_OFFSET = 8; // I/O:  Mode Register
 
-const UART_LSR_DR = 0x01;    // Receiver data ready
-const UART_LSR_THRE = 0x20;  // Transmit-hold-register empty
+const UART_LSR_DR = 0x01; // Receiver data ready
+const UART_LSR_THRE = 0x20; // Transmit-hold-register empty
 
 fn write_reg(offset: usize, value: u8) void {
     const ptr: *volatile u8 = @ptrFromInt(uart_base + offset);
@@ -57,7 +56,7 @@ pub fn init() void {
 
     const divisor: u16 = 592;
     const divisor_least: u8 = divisor & 0xff;
-    const divisor_most:  u8 = divisor >> 8;
+    const divisor_most: u8 = divisor >> 8;
     write_reg(UART_DLL_OFFSET, divisor_least);
     write_reg(UART_DLM_OFFSET, divisor_most);
 
