@@ -1,4 +1,5 @@
 const std = @import("std");
+const Target = std.Target;
 
 // write a build.zig file that changes the bootloader for the operating system depending on the architecture specified via the command line argument target_arch
 
@@ -42,7 +43,7 @@ pub fn build(b: *std.Build) anyerror!void {
         .root_source_file = b.path("src/main.zig"),
         .optimize = optimize,
         .target = target,
-        .name = "kernel",
+        .name = "kiwiRTOS.elf",
         .code_model = .medium,
     });
 
