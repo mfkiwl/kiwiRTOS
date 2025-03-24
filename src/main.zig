@@ -3,6 +3,7 @@
 const std = @import("std");
 const uart = @import("drivers/uart.zig");
 const vga = @import("drivers/vga.zig");
+const utils = @import("lib/utils.zig");
 
 // Here we set up a printf-like writer from the standard library by providing
 // a way to output via the UART.

@@ -1,34 +1,75 @@
 //! This file provides a UART driver based on the OpenSBI NS16550 UART driver.
 
-// The default UART serial device is at 0x10000000 on the QEMU RISC-V virtual platform
-const uart_base: usize = 0x10000000;
+const std = @import("std");
+const utils = @import("../lib/utils.zig");
 
-const UART_RBR_OFFSET = 0; // In:  Recieve Buffer Register
-const UART_DLL_OFFSET = 0; // Out: Divisor Latch Low
-const UART_IER_OFFSET = 1; // I/O: Interrupt Enable Register
-const UART_DLM_OFFSET = 1; // Out: Divisor Latch High
-const UART_FCR_OFFSET = 2; // Out: FIFO Control Register
-const UART_LCR_OFFSET = 3; // Out: Line Control Register
-const UART_LSR_OFFSET = 5; // In:  Line Status Register
-const UART_MDR1_OFFSET = 8; // I/O:  Mode Register
+/// Physical memory address of the UART
+pub const UART_BASE = 0x10000000; //QEMU RISC-V virtual platform
 
-const UART_LSR_DR = 0x01; // Receiver data ready
-const UART_LSR_THRE = 0x20; // Transmit-hold-register empty
+/// UART register offsets
+pub const UartRegisters = struct {
+    /// In: Recieve Buffer Register
+    pub const RBR = 0x00;
+    /// Out: Divisor Latch Low
+    pub const DLL = 0x00;
+    /// I/O: Interrupt Enable Register
+    pub const IER = 0x01;
+    /// Out: Divisor Latch High
+    pub const DLM = 0x01;
+    /// Out: FIFO Control Register
+    pub const FCR = 0x02;
+    /// Out: Line Control Register
+    pub const LCR = 0x03;
+    /// In:  Line Status Register
+    pub const LSR = 0x05;
+    /// I/O:  Mode Register
+    pub const MDR1 = 0x08;
+};
+
+/// UART Line Status Register flags
+pub const UartLSRFlags = struct {
+    /// Receiver data ready
+    pub const DR = 0x01;
+    /// Transmit-hold-register empty
+    pub const THRE = 0x20;
+};
+
+/// UART driver
+pub const UartDriver = struct {
+    /// Current baud rate
+    baud_rate: u32,
+    /// Current data bits
+    data_bits: u8,
+    /// Current stop bits
+    stop_bits: u8,
+    /// Current parity
+    parity: u8,
+
+    /// Initialize a new UART driver with default settings
+    pub fn init() UartDriver {
+        return UartDriver{
+            .baud_rate = 9600,
+            .data_bits = 8,
+            .stop_bits = 1,
+            .parity = 0,
+        };
+    }
+};
 
 fn write_reg(offset: usize, value: u8) void {
-    const ptr: *volatile u8 = @ptrFromInt(uart_base + offset);
+    const ptr: *volatile u8 = @ptrFromInt(UART_BASE + offset);
     ptr.* = value;
 }
 
 fn read_reg(offset: usize) u8 {
-    const ptr: *volatile u8 = @ptrFromInt(uart_base + offset);
+    const ptr: *volatile u8 = @ptrFromInt(UART_BASE + offset);
     return ptr.*;
 }
 
 pub fn put_char(ch: u8) void {
     // Wait for transmission bit to be empty before enqueuing more characters
     // to be outputted.
-    while ((read_reg(UART_LSR_OFFSET) & UART_LSR_THRE) == 0) {}
+    while ((read_reg(UartRegisters.LSR) & UartLSRFlags.THRE) == 0) {}
 
     write_reg(0, ch);
 }
@@ -36,8 +77,8 @@ pub fn put_char(ch: u8) void {
 pub fn get_char() ?u8 {
     // Check that we actually have a character to read, if so then we read it
     // and return it.
-    if (read_reg(UART_LSR_OFFSET) & UART_LSR_DR == 1) {
-        return read_reg(UART_RBR_OFFSET);
+    if (read_reg(UartRegisters.LSR) & UartLSRFlags.DR == 1) {
+        return read_reg(UartRegisters.RBR);
     } else {
         return null;
     }
@@ -45,16 +86,16 @@ pub fn get_char() ?u8 {
 
 pub fn init() void {
     const lcr = (1 << 0) | (1 << 1);
-    write_reg(UART_LCR_OFFSET, lcr);
-    write_reg(UART_FCR_OFFSET, (1 << 0));
-    write_reg(UART_IER_OFFSET, (1 << 0));
-    write_reg(UART_LCR_OFFSET, lcr | (1 << 7));
+    write_reg(UartRegisters.LCR, lcr);
+    write_reg(UartRegisters.FCR, (1 << 0));
+    write_reg(UartRegisters.IER, (1 << 0));
+    write_reg(UartRegisters.LCR, lcr | (1 << 7));
 
     const divisor: u16 = 592;
     const divisor_least: u8 = divisor & 0xff;
     const divisor_most: u8 = divisor >> 8;
-    write_reg(UART_DLL_OFFSET, divisor_least);
-    write_reg(UART_DLM_OFFSET, divisor_most);
+    write_reg(UartRegisters.DLL, divisor_least);
+    write_reg(UartRegisters.DLM, divisor_most);
 
-    write_reg(UART_LCR_OFFSET, lcr);
+    write_reg(UartRegisters.LCR, lcr);
 }
