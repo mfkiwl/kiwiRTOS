@@ -55,8 +55,6 @@ pub const VgaTextDriver = struct {
         return @as(u8, @intFromEnum(fg)) | (@as(u8, @intFromEnum(bg)) << 4);
     }
 
-    // /* Begin function prototype declarations */
-    // void vgaTextModeInitialize(void);
     // uint8_t vgaTextModeEntryColor(VgaTextModeColor fg, VgaTextModeColor bg);
     // uint16_t vgaTextModeEntry(unsigned char ch, uint8_t color);
     // void vgaTextModeSetColor(VgaTextModeColor color);
