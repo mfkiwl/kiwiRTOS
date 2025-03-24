@@ -36,6 +36,8 @@ pub const UartLSRFlags = struct {
 
 /// UART driver
 pub const UartDriver = struct {
+    /// Base address of this UART device
+    base_addr: usize,
     /// Current baud rate
     baud_rate: u32,
     /// Current data bits
@@ -44,58 +46,55 @@ pub const UartDriver = struct {
     stop_bits: u8,
     /// Current parity
     parity: u8,
+    writer: Writer,
 
-    /// Initialize a new UART driver with default settings
-    pub fn init() UartDriver {
-        return UartDriver{
-            .baud_rate = 9600,
-            .data_bits = 8,
-            .stop_bits = 1,
-            .parity = 0,
-        };
+    /// Initialize a new UART driver with the given base address
+    pub fn init(self: *UartDriver, base_addr: usize) void {
+        self.base_addr = base_addr;
+        self.baud_rate = 9600;
+        self.data_bits = 8;
+        self.stop_bits = 1;
+        self.parity = 0;
+        self.writer = .{ .context = self };
+
+        const lcr = (1 << 0) | (1 << 1);
+        utils.writeByte(self.base_addr + UartRegisters.LCR, lcr);
+        utils.writeByte(self.base_addr + UartRegisters.FCR, (1 << 0));
+        utils.writeByte(self.base_addr + UartRegisters.IER, (1 << 0));
+        utils.writeByte(self.base_addr + UartRegisters.LCR, lcr | (1 << 7));
+
+        const divisor: u16 = 592;
+        const divisor_least: u8 = divisor & 0xff;
+        const divisor_most: u8 = divisor >> 8;
+        utils.writeByte(self.base_addr + UartRegisters.DLL, divisor_least);
+        utils.writeByte(self.base_addr + UartRegisters.DLM, divisor_most);
+        utils.writeByte(self.base_addr + UartRegisters.LCR, lcr);
+    }
+
+    pub fn putChar(self: *UartDriver, ch: u8) void {
+        // Wait for transmission bit to be empty before enqueuing more characters
+        // to be outputted.
+        while ((utils.readByte(self.base_addr + UartRegisters.LSR) & UartLSRFlags.THRE) == 0) {}
+
+        utils.writeByte(self.base_addr + UartRegisters.RBR, ch);
+    }
+
+    pub fn putStr(self: *UartDriver, str: []const u8) !usize {
+        for (str) |ch| {
+            self.putChar(ch);
+        }
+        return str.len;
+    }
+
+    /// Writer function for std.io.Writer interface
+    pub fn writerFn(self: *UartDriver, bytes: []const u8) error{}!usize {
+        return self.putStr(bytes);
     }
 };
 
-fn write_reg(offset: usize, value: u8) void {
-    const ptr: *volatile u8 = @ptrFromInt(UART_BASE + offset);
-    ptr.* = value;
+pub fn println(self: *UartDriver, comptime fmt: []const u8, args: anytype) void {
+    self.writer.print(fmt ++ "\n", args) catch {};
 }
 
-fn read_reg(offset: usize) u8 {
-    const ptr: *volatile u8 = @ptrFromInt(UART_BASE + offset);
-    return ptr.*;
-}
-
-pub fn put_char(ch: u8) void {
-    // Wait for transmission bit to be empty before enqueuing more characters
-    // to be outputted.
-    while ((read_reg(UartRegisters.LSR) & UartLSRFlags.THRE) == 0) {}
-
-    write_reg(0, ch);
-}
-
-pub fn get_char() ?u8 {
-    // Check that we actually have a character to read, if so then we read it
-    // and return it.
-    if (read_reg(UartRegisters.LSR) & UartLSRFlags.DR == 1) {
-        return read_reg(UartRegisters.RBR);
-    } else {
-        return null;
-    }
-}
-
-pub fn init() void {
-    const lcr = (1 << 0) | (1 << 1);
-    write_reg(UartRegisters.LCR, lcr);
-    write_reg(UartRegisters.FCR, (1 << 0));
-    write_reg(UartRegisters.IER, (1 << 0));
-    write_reg(UartRegisters.LCR, lcr | (1 << 7));
-
-    const divisor: u16 = 592;
-    const divisor_least: u8 = divisor & 0xff;
-    const divisor_most: u8 = divisor >> 8;
-    write_reg(UartRegisters.DLL, divisor_least);
-    write_reg(UartRegisters.DLM, divisor_most);
-
-    write_reg(UartRegisters.LCR, lcr);
-}
+/// Writer type for std library integration
+const Writer = std.io.Writer(*UartDriver, error{}, UartDriver.writerFn);
