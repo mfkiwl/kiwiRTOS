@@ -1,0 +1,44 @@
+---
+  name: Compile Documentation and deploy to GitHub Pages
+  # Controls when the workflow will run
+  on:
+    push:
+      branches: [master, main]
+    pull_request:
+      types: [opened, synchronize, reopened, ready_for_review]
+    workflow_dispatch:
+  defaults:
+    run:
+      working-directory: .
+
+  # The sequence of runs in this workflow:
+  jobs:
+    quality:
+      runs-on: ubuntu-latest
+      steps:
+        - name: Check OS Version
+          run: lsb_release -a
+        - name: Show Kernel Information
+          run: uname -a
+        - name: Check out Repository Code
+          uses: actions/checkout@v4
+          with:
+            submodules: true # Fetch submodules
+            fetch-depth: 0 # Fetch all history for .GitInfo and .Lastmod
+        - name: Set up the environment
+          uses: ./.github/actions/setup-zig-env
+        - name: Compile Documentation
+          run: just docs
+        - name: Post Processing
+          run: |
+            mkdir -p build
+            cp zig-out/docs/* build/
+        - name: Deploy to gh-pages
+          uses: crazy-max/ghaction-github-pages@v4
+          if: github.ref == 'refs/heads/master' || github.ref == 'refs/heads/main'
+          with:
+            # the output branch mentioned above
+            target_branch: gh-pages
+            build_dir: ./build
+          env:
+            GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

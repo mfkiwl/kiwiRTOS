@@ -1,5 +1,8 @@
+//! This is the main entrypoint for the kernel
+
 const std = @import("std");
 const uart = @import("drivers/uart.zig");
+const vga = @import("drivers/vga.zig");
 
 // Here we set up a printf-like writer from the standard library by providing
 // a way to output via the UART.

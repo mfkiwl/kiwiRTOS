@@ -137,4 +137,13 @@ pub fn build(b: *std.Build) anyerror!void {
     if (b.args) |args| qemu_cmd.addArgs(args);
     const run_step = b.step("run", "Start the kernel in qemu");
     run_step.dependOn(&qemu_cmd.step);
+
+    const install_docs = b.addInstallDirectory(.{
+        .source_dir = kernel.getEmittedDocs(),
+        .install_dir = .prefix,
+        .install_subdir = "docs",
+    });
+
+    const docs_step = b.step("docs", "Copy documentation artifacts to prefix path");
+    docs_step.dependOn(&install_docs.step);
 }

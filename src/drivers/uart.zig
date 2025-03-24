@@ -1,10 +1,6 @@
-// This is a driver for the NS16550 UART devices. It is based on the OpenSBI NS16550 driver.
+//! This file provides a UART driver based on the OpenSBI NS16550 UART driver.
 
-pub const UART = struct {
-    // UART driver implementation
-};
-
-// The default UART serial device is at 0x10000000 on the QEMU RISC-V virt platform
+// The default UART serial device is at 0x10000000 on the QEMU RISC-V virtual platform
 const uart_base: usize = 0x10000000;
 
 const UART_RBR_OFFSET = 0; // In:  Recieve Buffer Register

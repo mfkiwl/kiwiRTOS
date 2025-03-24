@@ -5,6 +5,8 @@ alias ch := check
 alias f := format
 alias d := docs
 
+ZIG_LOCAL_CACHE_DIR := "./.cache/zig"
+
 # Run a package
 run *args='riscv64':
   zig build run -Dtarget_arch={{args}}
@@ -29,5 +31,5 @@ format:
 
 # Generate documentation
 docs:
+  mkdir -p {{ZIG_LOCAL_CACHE_DIR}}
   zig build docs -Dtarget_arch=riscv64
-

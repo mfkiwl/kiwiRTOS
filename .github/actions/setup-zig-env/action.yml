@@ -1,0 +1,26 @@
+---
+name: "Setup Zig Environment"
+description: "Set up Zig environment for the given Zig version"
+# The inputs for this action:
+inputs:
+  zig-version:
+    description: "Zig version to use"
+    required: true
+    default: "0.13.0"
+  just-version:
+    description: "just version to use"
+    required: true
+    default: "1.5.0"
+
+# The sequence of runs in this action:
+runs:
+  using: "composite"
+  steps:
+    - name: Setup Zig
+      uses: mlugg/setup-zig@v1
+      with:
+        version: ${{ inputs.zig-version }}
+    - name: Setup just
+      uses: extractions/setup-just@v2
+      with:
+        version: ${{ inputs.just-version }}
