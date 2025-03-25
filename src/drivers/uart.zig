@@ -4,7 +4,7 @@ const std = @import("std");
 const utils = @import("../lib/utils.zig");
 
 /// Physical memory address of the UART
-pub const UART_BASE = 0x10000000; //QEMU RISC-V virtual platform
+pub const UART_BASE = 0x10000000; // QEMU RISC-V virtual platform
 
 /// UART register offsets
 pub const UartRegisters = struct {
@@ -48,10 +48,10 @@ pub const UartDriver = struct {
     parity: u8,
     writer: Writer,
 
-    /// Initialize a new UART driver with the given base address
-    pub fn init(self: *UartDriver, base_addr: usize) void {
+    /// Initialize a new UART driver
+    pub fn init(self: *UartDriver, base_addr: usize, baud_rate: u32) void {
         self.base_addr = base_addr;
-        self.baud_rate = 9600;
+        self.baud_rate = baud_rate;
         self.data_bits = 8;
         self.stop_bits = 1;
         self.parity = 0;
@@ -90,11 +90,11 @@ pub const UartDriver = struct {
     pub fn writerFn(self: *UartDriver, bytes: []const u8) error{}!usize {
         return self.putStr(bytes);
     }
-};
 
-pub fn println(self: *UartDriver, comptime fmt: []const u8, args: anytype) void {
-    self.writer.print(fmt ++ "\n", args) catch {};
-}
+    pub fn println(self: *UartDriver, comptime fmt: []const u8, args: anytype) void {
+        self.writer.print(fmt ++ "\n", args) catch {};
+    }
+};
 
 /// Writer type for std library integration
 const Writer = std.io.Writer(*UartDriver, error{}, UartDriver.writerFn);

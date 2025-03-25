@@ -1,4 +1,4 @@
-//! This file provides utility functions
+//! This file provides utility functions for interacting with memory-mapped registers.
 
 /// Read an 8-bit value from a memory-mapped register
 pub fn readReg(base_addr: usize) u8 {

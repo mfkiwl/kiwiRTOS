@@ -10,7 +10,6 @@
 //! - `services`: Handles services for the RTOS
 //! - `syscalls`: Handles system calls for the RTOS
 
-pub const drivers = @import("drivers/drivers.zig");
 pub const vga = @import("drivers/vga.zig");
 pub const uart = @import("drivers/uart.zig");
 pub const utils = @import("lib/utils.zig");
@@ -27,8 +26,8 @@ export fn trap() align(4) callconv(.C) noreturn {
 export fn kmain() callconv(.C) void {
     // All we're doing is setting up access to the serial device (UART)
     // and printing a simple message to make sure the kernel has started!
-    var uart_driver: drivers.uart.UartDriver = undefined;
-    drivers.uart.UartDriver.init(&uart_driver, drivers.uart.UART_BASE);
+    var uart_driver: uart.UartDriver = undefined;
+    uart.UartDriver.init(&uart_driver, uart.UART_BASE, 9600);
     // Who knows, maybe in the future we'll have rv128...
-    drivers.uart.println(&uart_driver, "Zig is running on barebones RISC-V (rv{})!", .{@bitSizeOf(usize)});
+    uart_driver.println("Zig is running on barebones RISC-V (rv{})!", .{@bitSizeOf(usize)});
 }

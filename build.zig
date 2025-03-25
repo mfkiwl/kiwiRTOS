@@ -1,3 +1,5 @@
+//! This is the build script for the operating system.
+
 const std = @import("std");
 const Target = std.Target;
 const Feature = @import("std").Target.Cpu.Feature;
