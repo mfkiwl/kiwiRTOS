@@ -32,7 +32,7 @@ pub const VgaTextColorCode = enum(u4) {
 };
 
 /// Represents a VGA text color
-const VgaTextColor = struct {
+pub const VgaTextColor = struct {
     code: u8,
 
     /// Create a new VGA text color from foreground and background colors
@@ -44,7 +44,7 @@ const VgaTextColor = struct {
 };
 
 /// Represents a VGA text entry (a character with color attributes)
-const VgaTextEntry = struct {
+pub const VgaTextEntry = struct {
     code: u16,
 
     /// Create a VGA text entry from a character and a color

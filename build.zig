@@ -5,6 +5,7 @@ const Target = std.Target;
 const Feature = @import("std").Target.Cpu.Feature;
 const kernel_name = "kiwiRTOS";
 const fs = std.fs;
+const builtin = @import("builtin");
 
 // write a build.zig file that changes the bootloader for the operating system depending on the architecture specified via the command line argument target_arch
 
@@ -125,15 +126,36 @@ pub fn build(b: *std.Build) anyerror!void {
         .x86 => "qemu-x86",
     };
 
+    const display = if (builtin.os.tag == .macos)
+        "cocoa"
+    else
+        "sdl";
+    const kernel_path = "zig-out/bin/" ++ kernel_name;
+
     const qemu_cmd = b.addSystemCommand(&.{
-        qemu,                          "-machine",
-        "virt",                        "-bios",
-        "none",                        "-kernel",
-        "zig-out/bin/" ++ kernel_name, "-m",
-        "128M",                        "-cpu",
-        qemu_cpu,                      "-smp",
-        "4",                           "-nographic",
-        "-serial",                     "mon:stdio",
+        qemu,
+        "-machine",
+        "virt",
+        "-bios",
+        "none",
+        "-kernel",
+        kernel_path,
+        "-m",
+        "128M",
+        "-cpu",
+        qemu_cpu,
+        "-smp",
+        "4",
+        "-device",
+        "virtio-gpu-device",
+        "-device",
+        "virtio-keyboard-device",
+        "-device",
+        "virtio-mouse-device",
+        "-display",
+        display,
+        "-serial",
+        "mon:stdio",
     });
 
     qemu_cmd.step.dependOn(b.getInstallStep());
