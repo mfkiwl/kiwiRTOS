@@ -26,8 +26,10 @@ export fn trap() align(4) callconv(.C) noreturn {
 export fn kmain() callconv(.C) void {
     // All we're doing is setting up access to the serial device (UART)
     // and printing a simple message to make sure the kernel has started!
-    var uart_driver: uart.UartDriver = undefined;
-    uart.UartDriver.init(&uart_driver, uart.UART_BASE, 9600);
+    var vga_text_driver: vga.VgaTextDriver = undefined;
+    vga.VgaTextDriver.init(&vga_text_driver, vga.VGA_TEXT_BUFFER);
+    // var uart_driver: uart.UartDriver = undefined;
+    // uart.UartDriver.init(&uart_driver, uart.UART_BASE, 9600);
     // Who knows, maybe in the future we'll have rv128...
-    uart_driver.println("Zig is running on barebones RISC-V (rv{})!", .{@bitSizeOf(usize)});
+    vga_text_driver.println("Zig is running on barebones RISC-V (rv{})!", .{@bitSizeOf(usize)});
 }

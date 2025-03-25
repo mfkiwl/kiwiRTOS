@@ -46,6 +46,7 @@ pub const UartDriver = struct {
     stop_bits: u8,
     /// Current parity
     parity: u8,
+    /// Writer for std.io.Writer interface
     writer: Writer,
 
     /// Initialize a new UART driver
