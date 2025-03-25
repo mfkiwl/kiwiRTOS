@@ -1,6 +1,7 @@
 //! This file provides a VGA text mode driver (80x25)
 
 const std = @import("std");
+const utils = @import("../lib/utils.zig");
 
 /// VGA text mode width
 pub const VGA_TEXT_WIDTH = usize(80);
@@ -38,32 +39,76 @@ pub const VgaTextDriver = struct {
     /// Current text color
     color: u8,
     /// Pointer to VGA buffer (memory-mapped)
-    buffer: [*]volatile u16,
+    buffer: usize, //
 
-    /// Initialize a new VGA text mode driver with default settings
-    pub fn init() VgaTextDriver {
-        return VgaTextDriver{
-            .row = 0,
-            .column = 0,
-            .color = createColor(.WHITE, .BLACK),
-            .buffer = VGA_TEXT_BUFFER,
-        };
+    /// Initialize a VGA text mode driver
+    pub fn init(self: *VgaTextDriver, buffer_addr: usize) void {
+        self.row = 0;
+        self.column = 0;
+        self.color = entryColor(.GREEN, .BLACK);
+        self.buffer = buffer_addr;
+        self.clear();
     }
 
     /// Create a color byte from foreground and background colors
-    pub fn createColor(fg: VgaTextColor, bg: VgaTextColor) u8 {
+    pub fn entryColor(fg: VgaTextColor, bg: VgaTextColor) u8 {
         return @as(u8, @intFromEnum(fg)) | (@as(u8, @intFromEnum(bg)) << 4);
     }
 
-    // uint8_t vgaTextModeEntryColor(VgaTextModeColor fg, VgaTextModeColor bg);
-    // uint16_t vgaTextModeEntry(unsigned char ch, uint8_t color);
-    // void vgaTextModeSetColor(VgaTextModeColor color);
-    // void vgaTextModePutChar(char ch);
-    // void vgaTextModePutEntry(char ch, uint8_t color, size_t x, size_t y);
-    // void vgaTextModeWrite(const char* str);
-    // void vgaTextModeClear(void);
-    // void vgaTextModeScroll(void);
+    /// Create a VGA entry (character with color attributes)
+    pub fn entry(ch: u8, color: u8) u16 {
+        return @as(u16, ch) | (@as(u16, color) << 8);
+    }
 
+    /// Set the current color of the VGA driver
+    pub fn setColor(self: *VgaTextDriver, color: u8) void {
+        self.color = color;
+    }
+
+    /// Put a character to the VGA buffer
+    pub fn putChar(self: *VgaTextDriver, ch: u8) void {
+        self.buffer[self.row * VGA_TEXT_WIDTH + self.column] = entry(ch, self.color);
+        self.column += 1;
+    }
+
+    /// Put a character with custom color attributes at a specific position
+    pub fn putCharCustom(self: *VgaTextDriver, ch: u8, color: u8, x: usize, y: usize) void {
+        self.buffer[y * VGA_TEXT_WIDTH + x] = entry(ch, color);
+    }
+
+    /// Write a string to the VGA buffer
+    pub fn putStr(self: *VgaTextDriver, str: []const u8) void {
+        for (str) |ch| {
+            self.putChar(ch);
+        }
+    }
+
+    /// Write a string to the VGA buffer at a specific position
+    pub fn putStrCustom(self: *VgaTextDriver, str: []const u8, color: u8, x: usize, y: usize) void {
+        for (str) |ch| {
+            self.putCharCustom(ch, color, x, y);
+        }
+    }
+
+    /// Clear the VGA buffer
+    pub fn clear(self: *VgaTextDriver) void {
+        for (0..VGA_TEXT_HEIGHT) |y| {
+            for (0..VGA_TEXT_WIDTH) |x| {
+                const index = y * VGA_TEXT_WIDTH + x;
+                self.buffer[index] = entry(' ', self.color);
+            }
+        }
+    }
+
+    /// Scroll the VGA buffer up by one line
+    pub fn scroll(self: *VgaTextDriver) void {
+        for (0..VGA_TEXT_HEIGHT) |y| {
+            for (0..VGA_TEXT_WIDTH) |x| {
+                const index = y * VGA_TEXT_WIDTH + x;
+                self.buffer[index] = self.buffer[index + VGA_TEXT_WIDTH];
+            }
+        }
+    }
 };
 
 // /// Create a VGA entry (character with color attributes)
