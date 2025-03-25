@@ -9,7 +9,7 @@ pub const VGA_TEXT_WIDTH = @as(usize, 80);
 pub const VGA_TEXT_HEIGHT = @as(usize, 25);
 
 /// VGA text mode buffer address
-pub const VGA_TEXT_BUFFER = @as(usize, 0xB8000);
+pub const VGA_TEXT_BUFFER = 0xB8000;
 
 /// VGA text mode colors
 pub const VgaTextColorCode = enum(u4) {
