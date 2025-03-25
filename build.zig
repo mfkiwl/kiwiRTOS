@@ -1,7 +1,8 @@
 const std = @import("std");
 const Target = std.Target;
 const Feature = @import("std").Target.Cpu.Feature;
-const kernel_name = "kiwiRTOS.elf";
+const kernel_name = "kiwiRTOS";
+const fs = std.fs;
 
 // write a build.zig file that changes the bootloader for the operating system depending on the architecture specified via the command line argument target_arch
 
@@ -72,7 +73,7 @@ pub fn build(b: *std.Build) anyerror!void {
     };
 
     const kernel = b.addExecutable(.{
-        .root_source_file = b.path("src/main.zig"),
+        .root_source_file = b.path("src/kiwiRTOS.zig"),
         .optimize = optimize,
         .target = target,
         .name = kernel_name,
