@@ -123,26 +123,28 @@ pub fn build(b: *std.Build) anyerror!void {
         .riscv64 => "qemu-system-riscv64",
         .riscv32 => "qemu-system-riscv32",
         .arm => "qemu-system-aarch64",
-        .x86 => "qemu-system-x86",
+        .x86 => "qemu-system-i386",
+    };
+
+    const qemu_machine = switch (target_arch) {
+        .riscv64, .riscv32, .arm => "virt",
+        .x86 => "pc",
     };
 
     const qemu_cpu = switch (target_arch) {
         .riscv64 => "rv64",
         .riscv32 => "rv32",
         .arm => "cortex-a53",
-        .x86 => "qemu-x86",
+        .x86 => "pentium",
     };
 
-    const display = if (builtin.os.tag == .macos)
-        "cocoa"
-    else
-        "sdl";
+    const display = if (builtin.os.tag == .macos) "cocoa" else "sdl";
     const kernel_path = "zig-out/bin/" ++ kernel_name;
 
     const qemu_cmd = b.addSystemCommand(&.{
         qemu,
         "-machine",
-        "virt",
+        qemu_machine,
         "-bios",
         "none",
         "-kernel",
