@@ -36,7 +36,14 @@ pub fn build(b: *std.Build) anyerror!void {
             disabled_features.addFeature(@intFromEnum(Target.riscv.Feature.f));
         },
         .arm => {},
-        .x86 => {},
+        .x86 => {
+            disabled_features.addFeature(@intFromEnum(std.Target.x86.Feature.mmx));
+            disabled_features.addFeature(@intFromEnum(std.Target.x86.Feature.sse));
+            disabled_features.addFeature(@intFromEnum(std.Target.x86.Feature.sse2));
+            disabled_features.addFeature(@intFromEnum(std.Target.x86.Feature.avx));
+            disabled_features.addFeature(@intFromEnum(std.Target.x86.Feature.avx2));
+            enabled_features.addFeature(@intFromEnum(std.Target.x86.Feature.soft_float));
+        },
     }
 
     // Define the target architecture that the kernel will be built for
@@ -88,10 +95,10 @@ pub fn build(b: *std.Build) anyerror!void {
 
     // Set the appropriate linker script based on the target architecture
     const linker_script = switch (target_arch) {
-        .riscv32 => "src/arch/riscv/32/linker.lds",
-        .riscv64 => "src/arch/riscv/64/linker.lds",
-        .arm => "src/arch/arm/linker.lds",
-        .x86 => "src/arch/x86/linker.lds",
+        .riscv32 => "src/arch/riscv/32/linker.ld",
+        .riscv64 => "src/arch/riscv/64/linker.ld",
+        .arm => "src/arch/arm/linker.ld",
+        .x86 => "src/arch/x86/linker.ld",
     };
 
     kernel.setLinkerScriptPath(b.path(linker_script));
