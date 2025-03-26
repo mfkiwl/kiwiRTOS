@@ -8,7 +8,7 @@ alias d := docs
 ZIG_LOCAL_CACHE_DIR := "./.cache/zig"
 
 # Run a package
-run *args='riscv64':
+run *args='x86':
   zig build run -Dtarget_arch={{args}}
 
 # Build the project

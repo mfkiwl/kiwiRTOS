@@ -2,6 +2,7 @@
 
 const std = @import("std");
 const utils = @import("../lib/utils.zig");
+const builtin = @import("builtin");
 
 /// VGA text mode width
 pub const VGA_TEXT_WIDTH = @as(usize, 80);
@@ -9,7 +10,11 @@ pub const VGA_TEXT_WIDTH = @as(usize, 80);
 pub const VGA_TEXT_HEIGHT = @as(usize, 25);
 
 /// VGA text mode buffer address
-pub const VGA_TEXT_BUFFER = 0xB8000;
+pub const VGA_TEXT_BUFFER = switch (builtin.cpu.arch) {
+    .x86 => 0xB8000,
+    .aarch64, .riscv64, .riscv32 => 0x09000000,
+    else => @compileError("Unsupported architecture"),
+};
 
 /// VGA text mode colors
 pub const VgaTextColorCode = enum(u4) {
