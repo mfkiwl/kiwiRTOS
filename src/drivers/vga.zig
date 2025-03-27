@@ -8,6 +8,8 @@ const builtin = @import("builtin");
 pub const VGA_TEXT_WIDTH = @as(usize, 80);
 /// VGA text mode height
 pub const VGA_TEXT_HEIGHT = @as(usize, 25);
+/// VGA text mode size
+pub const VGA_TEXT_SIZE = VGA_TEXT_WIDTH * VGA_TEXT_HEIGHT;
 
 /// VGA text mode buffer address
 pub const VGA_TEXT_BUFFER = switch (builtin.cpu.arch) {
