@@ -8,15 +8,16 @@
 .section .bss
 .align 16
 stack_bottom:
-.skip 16384 # 16 KiB
+.skip 16384 /* 16 KiB */
 stack_top:
 
 /* Multiboot header section */
 .section .text
 .global _start
 .type _start, @function
+
 _start:
-    /* Set up the stack */
+ /* Set up the stack */
     movl $stack_top, %esp
 
     /* Reset EFLAGS */
@@ -27,8 +28,8 @@ _start:
     pushl %ebx    /* Multiboot info structure pointer */
     pushl %eax    /* Should contain MULTIBOOT_MAGIC */
 
-    /* Call the main function in kernel.zig */
-    call main
+    /* Call the kernel main function */
+    call kmain
 
     /* Halt if main returns */
 hang:
