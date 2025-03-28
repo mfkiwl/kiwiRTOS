@@ -12,9 +12,8 @@ run *args='x86':
   zig build run -Dtarget_arch={{args}}
 
 # Build the project
-build *args='riscv64':
+build *args='x86':
   zig build -Dtarget_arch={{args}}
-
 
 # Clean the project
 clean:
@@ -32,4 +31,4 @@ format:
 # Generate documentation
 docs:
   mkdir -p {{ZIG_LOCAL_CACHE_DIR}}
-  zig build docs -Dtarget_arch=riscv64
+  zig build docs -Dtarget_arch=x86

@@ -24,7 +24,7 @@
 
 <!-- ABOUT THE PROJECT -->
 
-A Real-Time Operating System (RTOS) designed for embedded applications with targets for RISC-V (RV32I, RV64I) and ARM written in Zig.
+A minimal Real-Time Operating System (RTOS) designed for embedded applications with targets for x86, RISC-V (RV32I, RV64I) and ARM written in Zig.
 
 ### Built With
 
@@ -82,7 +82,7 @@ To get a local copy of the project up and running on your machine, follow these 
 
 ## License
 
-The source code for this project is distributed under the terms of the MIT License, as I firmly believe that collaborating on free and open-source software fosters innovations that mutually and equitably beneficial to both collaborators and users alike. See [`LICENSE`](./LICENSE) for details and more information.
+The source code for this project is distributed under the terms of the GNU General Public License v3.0, as I firmly believe that collaborating on free and open-source software fosters innovations that mutually and equitably beneficial to both collaborators and users alike. See [`LICENSE`](./LICENSE) for details and more information.
 
 <!-- MARKDOWN LINKS & IMAGES -->
 <!-- https://www.markdownguide.org/basic-syntax/#reference-style-links -->

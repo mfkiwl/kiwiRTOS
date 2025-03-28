@@ -102,19 +102,29 @@ pub const VgaTextDriver = struct {
         return driver;
     }
 
-    /// Set the active colors.
-    pub fn setColors(self: *VgaTextDriver, fg: VgaTextColorCode, bg: VgaTextColorCode) void {
-        self.color = VgaTextColor.new(fg, bg);
+    /// Clear the screen using the active background color as the color to be painted.
+    pub fn clear(self: *VgaTextDriver) void {
+        for (0..VGA_TEXT_HEIGHT) |y| {
+            for (0..VGA_TEXT_WIDTH) |x| {
+                const index = y * VGA_TEXT_WIDTH + x;
+                self.buffer[index] = VgaTextEntry.new(' ', self.color).code;
+            }
+        }
+        self.row = 0;
+        self.column = 0;
+        self.updateCursor();
     }
 
-    /// Set the active foreground color.
-    pub fn setForegroundColor(self: *VgaTextDriver, fg: VgaTextColorCode) void {
-        self.color = VgaTextColor{ .code = (0xF0 & self.color.code) | @intFromEnum(fg) };
-    }
-
-    /// Set the active background color.
-    pub fn setBackgroundColor(self: *VgaTextDriver, bg: VgaTextColorCode) void {
-        self.color = VgaTextColor{ .code = (0x0F & self.color.code) | (@intFromEnum(bg) << 4) };
+    /// Scroll the VGA buffer up by one line
+    pub fn scroll(self: *VgaTextDriver) void {
+        for (1..VGA_TEXT_HEIGHT) |y| {
+            for (0..VGA_TEXT_WIDTH) |x| {
+                const index = y * VGA_TEXT_WIDTH + x;
+                const next_index = (y - 1) * VGA_TEXT_WIDTH + x;
+                self.buffer[next_index] = self.buffer[index];
+            }
+        }
+        self.updateCursor();
     }
 
     /// Updates the hardware cursor position
@@ -130,17 +140,17 @@ pub const VgaTextDriver = struct {
         utils.outb(VGA_CRTC_DATA, @as(u8, @truncate(pos)));
     }
 
-    /// Sets the current cursor location.
-    pub fn setLocation(self: *VgaTextDriver, x: u8, y: u8) void {
-        self.column = x % VGA_TEXT_WIDTH;
-        self.row = y % VGA_TEXT_HEIGHT;
-        self.updateCursor();
+    /// Set the current color of the VGA driver
+    pub fn setColor(self: *VgaTextDriver, color: u8) void {
+        self.color = color;
     }
 
     /// Puts a character at the specific coordinates using the specified color.
     pub fn putCharAt(self: *VgaTextDriver, c: u8, newColor: VgaTextColor, x: usize, y: usize) void {
-        const index = y * VGA_TEXT_WIDTH + x;
-        self.buffer[index] = VgaTextEntry.new(c, newColor).code;
+        if (!(x >= VGA_TEXT_WIDTH or y >= VGA_TEXT_HEIGHT)) {
+            const index = y * VGA_TEXT_WIDTH + x;
+            self.buffer[index] = VgaTextEntry.new(c, newColor).code;
+        }
     }
 
     /// Prints a single character
@@ -162,6 +172,13 @@ pub const VgaTextDriver = struct {
         }
     }
 
+    /// Sets the current cursor location.
+    pub fn setLocation(self: *VgaTextDriver, x: u8, y: u8) void {
+        self.column = x % VGA_TEXT_WIDTH;
+        self.row = y % VGA_TEXT_HEIGHT;
+        self.updateCursor();
+    }
+
     pub fn writer(self: *VgaTextDriver) Writer(*VgaTextDriver, error{}, writerCallback) {
         return .{ .context = self };
     }
@@ -174,35 +191,10 @@ pub const VgaTextDriver = struct {
     pub fn printf(self: *VgaTextDriver, comptime format: []const u8, args: anytype) void {
         fmt.format(self.writer(), format, args) catch unreachable;
     }
-
-    /// Clear the screen using the active background color as the color to be painted.
-    pub fn clear(self: *VgaTextDriver) void {
-        // Fill the entire buffer with spaces with the current color
-        var i: usize = 0;
-        while (i < VGA_TEXT_SIZE) : (i += 1) {
-            self.buffer[i] = VgaTextEntry.new(' ', self.color).code;
-        }
-        self.row = 0;
-        self.column = 0;
-        self.updateCursor();
-    }
 };
 
 // Create a global instance for backward compatibility
 var default_driver: VgaTextDriver = undefined;
-
-// Public API that uses the default driver
-pub fn setColors(fg: VgaTextColorCode, bg: VgaTextColorCode) void {
-    default_driver.setColors(fg, bg);
-}
-
-pub fn setForegroundColor(fg: VgaTextColorCode) void {
-    default_driver.setForegroundColor(fg);
-}
-
-pub fn setBackgroundColor(bg: VgaTextColorCode) void {
-    default_driver.setBackgroundColor(bg);
-}
 
 pub fn setLocation(x: u8, y: u8) void {
     default_driver.setLocation(x, y);

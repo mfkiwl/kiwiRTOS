@@ -1,6 +1,6 @@
 //! Root module for kiwiRTOS
 //!
-//! A Real-Time Operating System (RTOS) designed for embedded applications with targets for x86, RISC-V (RV32I, RV64I) and ARM written in Zig
+//! A minimal Real-Time Operating System (RTOS) designed for embedded applications with targets for x86, RISC-V (RV32I, RV64I) and ARM written in Zig
 //!
 //! ## Modules
 //! - `arch`: Handles architecture-specific code
@@ -11,7 +11,7 @@
 //! - `syscalls`: Handles system calls for the RTOS
 
 pub const vga = @import("drivers/vga.zig");
-// // pub const uart = @import("drivers/uart.zig");
+pub const uart = @import("drivers/uart.zig");
 pub const utils = @import("lib/utils.zig");
 
 const ALIGN = 1 << 0;
@@ -51,10 +51,9 @@ export fn kmain() callconv(.C) noreturn {
 
 pub fn main() void {
     vga.init();
-    // vga.setColors(.WHITE, .BLUE);
     vga.clear();
     vga.putString("Hello, world");
-    vga.setForegroundColor(.LIGHT_RED);
+    // vga.setForegroundColor(.LIGHT_RED);
     vga.putChar('!');
 
     // // Initialize console
