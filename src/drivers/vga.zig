@@ -54,7 +54,7 @@ pub const VgaTextColor = struct {
 pub const VgaTextEntry = struct {
     code: u16,
 
-    /// Create a VGA text entry from a character and a color
+    /// Create a VGA text entry from a unicode character and a color
     pub fn new(ch: u8, color: VgaTextColor) VgaTextEntry {
         return VgaTextEntry{
             .code = @as(u16, ch) | (@as(u16, color.code) << 8),
@@ -113,7 +113,7 @@ pub const VgaTextDriver = struct {
     }
 
     /// Write a string to the VGA buffer
-    pub fn putStr(self: *VgaTextDriver, str: []const u8) !usize {
+    pub fn putStr(self: *VgaTextDriver, str: []const u8) error{}!usize {
         for (str) |ch| {
             self.putChar(ch);
         }
@@ -126,7 +126,7 @@ pub const VgaTextDriver = struct {
     }
 
     pub fn println(self: *VgaTextDriver, comptime fmt: []const u8, args: anytype) void {
-        self.writer.print(fmt ++ "\n", args) catch {};
+        self.writer.print(fmt ++ "\n", args) catch unreachable;
     }
 
     /// Clear the VGA buffer

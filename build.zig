@@ -123,7 +123,7 @@ pub fn build(b: *std.Build) anyerror!void {
         .riscv64 => "qemu-system-riscv64",
         .riscv32 => "qemu-system-riscv32",
         .arm => "qemu-system-aarch64",
-        .x86 => "qemu-system-i386",
+        .x86 => "qemu-system-x86_64",
     };
 
     const qemu_machine = switch (target_arch) {
@@ -141,12 +141,15 @@ pub fn build(b: *std.Build) anyerror!void {
     const display = if (builtin.os.tag == .macos) "cocoa" else "sdl";
     const kernel_path = "zig-out/bin/" ++ kernel_name;
 
+    // Add log file path configuration
+    const log_file = b.option([]const u8, "log_file", "Path to QEMU log file") orelse "qemu.log";
+
     const qemu_cmd = b.addSystemCommand(&.{
         qemu,
         "-machine",
         qemu_machine,
-        "-bios",
-        "none",
+        // "-bios",
+        // "none",
         "-kernel",
         kernel_path,
         "-m",
@@ -155,16 +158,18 @@ pub fn build(b: *std.Build) anyerror!void {
         qemu_cpu,
         "-smp",
         "4",
-        "-device",
-        "virtio-gpu-device",
-        "-device",
-        "virtio-keyboard-device",
-        "-device",
-        "virtio-mouse-device",
+        // "-device",
+        // "virtio-gpu-device",
+        // "-device",
+        // "virtio-keyboard-device",
+        // "-device",
+        // "virtio-mouse-device",
         "-display",
         display,
         "-serial",
         "mon:stdio",
+        "-D", log_file, // Enable QEMU logging
+        "-d", "in_asm,int,mmu,pcall,unimp,guest_errors", // Enable detailed logging
     });
 
     qemu_cmd.step.dependOn(b.getInstallStep());
