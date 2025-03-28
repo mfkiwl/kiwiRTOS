@@ -4,6 +4,9 @@ const std = @import("std");
 const utils = @import("../lib/utils.zig");
 const builtin = @import("builtin");
 
+const fmt = std.fmt;
+const Writer = std.io.Writer;
+
 /// VGA text mode width
 pub const VGA_TEXT_WIDTH = @as(usize, 80);
 /// VGA text mode height
@@ -18,8 +21,14 @@ pub const VGA_TEXT_BUFFER = switch (builtin.cpu.arch) {
     else => @compileError("Unsupported architecture"),
 };
 
+/// VGA I/O ports
+const VGA_CRTC_INDEX = 0x3D4;
+const VGA_CRTC_DATA = 0x3D5;
+const VGA_CURSOR_HIGH = 0x0E;
+const VGA_CURSOR_LOW = 0x0F;
+
 /// VGA text mode colors
-pub const VgaTextColorCode = enum(u4) {
+pub const VgaTextColorCode = enum(u8) {
     BLACK = 0,
     BLUE = 1,
     GREEN = 2,
@@ -71,84 +80,152 @@ pub const VgaTextDriver = struct {
     /// Current text color
     color: VgaTextColor,
     /// Pointer to VGA buffer (memory-mapped)
-    buffer: usize,
-    /// Writer for std.io.Writer interface
-    writer: Writer,
+    buffer: [*]volatile u16,
 
-    /// Initialize a VGA text mode driver
-    pub fn init(self: *VgaTextDriver, buffer_addr: usize) void {
+    /// Create a new VGA text driver instance
+    pub fn init() VgaTextDriver {
+        // Enable the cursor
+        utils.outb(VGA_CRTC_INDEX, 0x0A);
+        utils.outb(VGA_CRTC_DATA, (utils.inb(VGA_CRTC_DATA) & 0xC0) | 0);
+
+        utils.outb(VGA_CRTC_INDEX, 0x0B);
+        utils.outb(VGA_CRTC_DATA, (utils.inb(VGA_CRTC_DATA) & 0xE0) | 15);
+
+        var driver = VgaTextDriver{
+            .row = 0,
+            .column = 0,
+            .color = VgaTextColor.new(VgaTextColorCode.LIGHT_GRAY, VgaTextColorCode.BLACK),
+            .buffer = @ptrFromInt(VGA_TEXT_BUFFER),
+        };
+
+        driver.updateCursor();
+        return driver;
+    }
+
+    /// Set the active colors.
+    pub fn setColors(self: *VgaTextDriver, fg: VgaTextColorCode, bg: VgaTextColorCode) void {
+        self.color = VgaTextColor.new(fg, bg);
+    }
+
+    /// Set the active foreground color.
+    pub fn setForegroundColor(self: *VgaTextDriver, fg: VgaTextColorCode) void {
+        self.color = VgaTextColor{ .code = (0xF0 & self.color.code) | @intFromEnum(fg) };
+    }
+
+    /// Set the active background color.
+    pub fn setBackgroundColor(self: *VgaTextDriver, bg: VgaTextColorCode) void {
+        self.color = VgaTextColor{ .code = (0x0F & self.color.code) | (@intFromEnum(bg) << 4) };
+    }
+
+    /// Updates the hardware cursor position
+    pub fn updateCursor(self: *const VgaTextDriver) void {
+        const pos = self.row * VGA_TEXT_WIDTH + self.column;
+
+        // Send high byte of cursor position
+        utils.outb(VGA_CRTC_INDEX, VGA_CURSOR_HIGH);
+        utils.outb(VGA_CRTC_DATA, @as(u8, @truncate(pos >> 8)));
+
+        // Send low byte of cursor position
+        utils.outb(VGA_CRTC_INDEX, VGA_CURSOR_LOW);
+        utils.outb(VGA_CRTC_DATA, @as(u8, @truncate(pos)));
+    }
+
+    /// Sets the current cursor location.
+    pub fn setLocation(self: *VgaTextDriver, x: u8, y: u8) void {
+        self.column = x % VGA_TEXT_WIDTH;
+        self.row = y % VGA_TEXT_HEIGHT;
+        self.updateCursor();
+    }
+
+    /// Puts a character at the specific coordinates using the specified color.
+    pub fn putCharAt(self: *VgaTextDriver, c: u8, newColor: VgaTextColor, x: usize, y: usize) void {
+        const index = y * VGA_TEXT_WIDTH + x;
+        self.buffer[index] = VgaTextEntry.new(c, newColor).code;
+    }
+
+    /// Prints a single character
+    pub fn putChar(self: *VgaTextDriver, c: u8) void {
+        self.putCharAt(c, self.color, self.column, self.row);
+        self.column += 1;
+        if (self.column == VGA_TEXT_WIDTH) {
+            self.column = 0;
+            self.row += 1;
+            if (self.row == VGA_TEXT_HEIGHT)
+                self.row = 0;
+        }
+        self.updateCursor();
+    }
+
+    pub fn putString(self: *VgaTextDriver, data: []const u8) void {
+        for (data) |c| {
+            self.putChar(c);
+        }
+    }
+
+    pub fn writer(self: *VgaTextDriver) Writer(*VgaTextDriver, error{}, writerCallback) {
+        return .{ .context = self };
+    }
+
+    fn writerCallback(self: *VgaTextDriver, string: []const u8) error{}!usize {
+        self.putString(string);
+        return string.len;
+    }
+
+    pub fn printf(self: *VgaTextDriver, comptime format: []const u8, args: anytype) void {
+        fmt.format(self.writer(), format, args) catch unreachable;
+    }
+
+    /// Clear the screen using the active background color as the color to be painted.
+    pub fn clear(self: *VgaTextDriver) void {
+        // Fill the entire buffer with spaces with the current color
+        var i: usize = 0;
+        while (i < VGA_TEXT_SIZE) : (i += 1) {
+            self.buffer[i] = VgaTextEntry.new(' ', self.color).code;
+        }
         self.row = 0;
         self.column = 0;
-        self.color = VgaTextColor.new(.GREEN, .BLACK);
-        self.buffer = buffer_addr;
-        self.writer = .{ .context = self };
-        self.clear();
-    }
-
-    /// Set the current color of the VGA driver
-    pub fn setColor(self: *VgaTextDriver, color: u8) void {
-        self.color = color;
-    }
-
-    /// Put a character to the VGA buffer
-    pub fn putChar(self: *VgaTextDriver, ch: u8) void {
-        switch (ch) {
-            '\n' => self.scroll(),
-            else => {
-                if (self.column >= VGA_TEXT_WIDTH) {
-                    self.scroll();
-                }
-                self.putCharAt(ch, self.column, self.row);
-                self.column += 1;
-            },
-        }
-    }
-
-    /// Put a character with custom color attributes at a specific position
-    pub fn putCharAt(self: *VgaTextDriver, ch: u8, x: usize, y: usize) void {
-        if (!(x >= VGA_TEXT_WIDTH or y >= VGA_TEXT_HEIGHT)) {
-            const index = y * VGA_TEXT_WIDTH + x;
-            utils.writeHalfWord(self.buffer + index, VgaTextEntry.new(ch, self.color).code);
-        }
-    }
-
-    /// Write a string to the VGA buffer
-    pub fn putStr(self: *VgaTextDriver, str: []const u8) error{}!usize {
-        for (str) |ch| {
-            self.putChar(ch);
-        }
-        return str.len;
-    }
-
-    /// Writer function for std.io.Writer interface
-    pub fn writerFn(self: *VgaTextDriver, bytes: []const u8) error{}!usize {
-        return self.putStr(bytes);
-    }
-
-    pub fn println(self: *VgaTextDriver, comptime fmt: []const u8, args: anytype) void {
-        self.writer.print(fmt ++ "\n", args) catch unreachable;
-    }
-
-    /// Clear the VGA buffer
-    pub fn clear(self: *VgaTextDriver) void {
-        for (0..VGA_TEXT_HEIGHT) |y| {
-            for (0..VGA_TEXT_WIDTH) |x| {
-                self.putCharAt(' ', x, y);
-            }
-        }
-    }
-
-    /// Scroll the VGA buffer up by one line
-    pub fn scroll(self: *VgaTextDriver) void {
-        for (1..VGA_TEXT_HEIGHT) |y| {
-            for (0..VGA_TEXT_WIDTH) |x| {
-                const index = y * VGA_TEXT_WIDTH + x;
-                const next_index = (y - 1) * VGA_TEXT_WIDTH + x;
-                utils.writeHalfWord(self.buffer + next_index, utils.readHalfWord(self.buffer + index));
-            }
-        }
+        self.updateCursor();
     }
 };
 
-/// Writer type for std library integration
-const Writer = std.io.Writer(*VgaTextDriver, error{}, VgaTextDriver.writerFn);
+// Create a global instance for backward compatibility
+var default_driver: VgaTextDriver = undefined;
+
+// Public API that uses the default driver
+pub fn setColors(fg: VgaTextColorCode, bg: VgaTextColorCode) void {
+    default_driver.setColors(fg, bg);
+}
+
+pub fn setForegroundColor(fg: VgaTextColorCode) void {
+    default_driver.setForegroundColor(fg);
+}
+
+pub fn setBackgroundColor(bg: VgaTextColorCode) void {
+    default_driver.setBackgroundColor(bg);
+}
+
+pub fn setLocation(x: u8, y: u8) void {
+    default_driver.setLocation(x, y);
+}
+
+pub fn putChar(c: u8) void {
+    default_driver.putChar(c);
+}
+
+pub fn putString(data: []const u8) void {
+    default_driver.putString(data);
+}
+
+pub const writer = Writer(*VgaTextDriver, error{}, VgaTextDriver.writerCallback){ .context = &default_driver };
+
+pub fn printf(comptime format: []const u8, args: anytype) void {
+    default_driver.printf(format, args);
+}
+
+pub fn init() void {
+    default_driver = VgaTextDriver.init();
+}
+
+pub fn clear() void {
+    default_driver.clear();
+}
