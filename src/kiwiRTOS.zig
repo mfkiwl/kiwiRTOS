@@ -50,15 +50,28 @@ export fn kmain() callconv(.C) noreturn {
 }
 
 pub fn main() void {
-    vga.init();
-    vga.clear();
-    vga.putString("Hello, world");
-    // vga.setForegroundColor(.LIGHT_RED);
-    vga.putChar('!');
+    // Initialize VGA text driver
+    var vga_text_driver: vga.VgaTextDriver = undefined;
+    vga_text_driver = vga.VgaTextDriver.init(vga.VGA_TEXT_BUFFER);
+    vga_text_driver.clear();
 
-    // // Initialize console
-    // var vga_text_driver: vga.VgaTextDriver = undefined;
-    // vga.VgaTextDriver.init(&vga_text_driver, vga.VGA_TEXT_BUFFER);
-    // vga_text_driver.clear();
-    // vga_text_driver.println("Hello, world!\n", .{});
+    // Print a welcome message
+    vga_text_driver.setColor(vga.VgaTextColor.new(.WHITE, .BLACK));
+    vga_text_driver.putStr("KiwiRTOS VGA Text Driver Demo\n");
+    vga_text_driver.putStr("----------------------------\n\n");
+
+    // Demonstrate alternating colors
+    var i: usize = 0;
+    while (i < 30) { // Intentionally print more than 25 lines to demonstrate scrolling
+        if (i % 2 == 0) {
+            vga_text_driver.setColor(vga.VgaTextColor.new(.LIGHT_RED, .BLACK));
+            // vga_text_driver.println("Hello, green world!", .{});
+            vga_text_driver.putStr("Hello, red world!\n");
+        } else {
+            vga_text_driver.setColor(vga.VgaTextColor.new(.LIGHT_GREEN, .BLACK));
+            vga_text_driver.putStr("Hello, green world!\n");
+        }
+        i += 1;
+    }
+    vga_text_driver.scroll();
 }
