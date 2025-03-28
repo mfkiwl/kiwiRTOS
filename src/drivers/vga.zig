@@ -82,8 +82,8 @@ pub const VgaTextDriver = struct {
     /// Pointer to VGA buffer (memory-mapped)
     buffer: [*]volatile u16,
 
-    /// Create a new VGA text driver instance
-    pub fn init() VgaTextDriver {
+    /// Initialize a VGA text mode driver
+    pub fn init(buffer_addr: usize) VgaTextDriver {
         // Enable the cursor
         utils.outb(VGA_CRTC_INDEX, 0x0A);
         utils.outb(VGA_CRTC_DATA, (utils.inb(VGA_CRTC_DATA) & 0xC0) | 0);
@@ -94,8 +94,8 @@ pub const VgaTextDriver = struct {
         var driver = VgaTextDriver{
             .row = 0,
             .column = 0,
-            .color = VgaTextColor.new(VgaTextColorCode.LIGHT_GRAY, VgaTextColorCode.BLACK),
-            .buffer = @ptrFromInt(VGA_TEXT_BUFFER),
+            .buffer = @ptrFromInt(buffer_addr),
+            .color = VgaTextColor.new(.GREEN, .BLACK),
         };
 
         driver.updateCursor();
@@ -223,7 +223,7 @@ pub fn printf(comptime format: []const u8, args: anytype) void {
 }
 
 pub fn init() void {
-    default_driver = VgaTextDriver.init();
+    default_driver = VgaTextDriver.init(VGA_TEXT_BUFFER);
 }
 
 pub fn clear() void {

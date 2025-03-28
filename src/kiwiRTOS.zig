@@ -51,7 +51,7 @@ export fn kmain() callconv(.C) noreturn {
 
 pub fn main() void {
     vga.init();
-    vga.setColors(.WHITE, .BLUE);
+    // vga.setColors(.WHITE, .BLUE);
     vga.clear();
     vga.putString("Hello, world");
     vga.setForegroundColor(.LIGHT_RED);
