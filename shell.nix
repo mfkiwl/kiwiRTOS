@@ -5,6 +5,7 @@ let
   isDarwin = pkgs.stdenv.isDarwin;
 in pkgs.mkShell {
   buildInputs = with pkgs; [
+    just # Just runner
     zig # Zig compiler
     xorriso # ISO image creator
     cdrtools # CD-ROM tools

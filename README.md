@@ -29,7 +29,18 @@ A minimal Real-Time Operating System (RTOS) designed for embedded applications w
 ### Built With
 
 [![Zig][Zig-shield]][Zig-url]
+[![NixOS][NixOS-shield]][NixOS-url]
 [![GitHub Actions][github-actions-shield]][github-actions-url]
+
+<!-- PROJECT PREVIEW -->
+## Preview
+
+<p align="center">
+  <img src="assets/img/demo.mp4"
+  width = "80%"
+  alt = "Video demonstration"
+  />
+</p>
 
 <!-- GETTING STARTED -->
 
@@ -37,7 +48,7 @@ A minimal Real-Time Operating System (RTOS) designed for embedded applications w
 
 ### Prerequisites
 
-Before attempting to build this project, make sure you have [Zig](https://ziglang.org/learn/getting-started/) installed on your machine.
+Before attempting to build this project, make sure you have [Zig](https://ziglang.org/learn/getting-started/) and [Nix](https://nixos.org/download.html) installed on your machine.
 
 ### Installation
 
@@ -50,16 +61,16 @@ To get a local copy of the project up and running on your machine, follow these 
    cd kiwiRTOS
    ```
 
-2. Build the project
+2. Install the project dependencies
 
    ```sh
-   zig build
+   nix-shell
    ```
 
 3. Run the project
 
    ```sh
-   zig run -Dtarget_arch=<architecture>
+   just run <architecture>
    ```
 
 <!-- PROJECT FILE STRUCTURE -->
@@ -98,6 +109,8 @@ The source code for this project is distributed under the terms of the GNU Gener
 <!-- https://github.com/Ileriayo/markdown-badges -->
 
 [Zig-shield]: https://img.shields.io/badge/Zig-%f7a41d.svg?style=for-the-badge&logo=zig&logoColor=f7a41d&labelColor=222222&color=f7a41d
+[NixOS-shield]: https://img.shields.io/badge/NIX-%23008080.svg?style=for-the-badge&logo=NixOS&logoColor=5277C3&labelColor=222222&color=5277C3
+[NixOS-url]: https://nixos.org/
 [Zig-url]: https://ziglang.org/
 [github-actions-shield]: https://img.shields.io/badge/github%20actions-%232671E5.svg?style=for-the-badge&logo=githubactions&logoColor=2671E5&labelColor=222222&color=2671E5
 [github-actions-url]: https://github.com/features/actions
