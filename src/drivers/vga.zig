@@ -4,7 +4,7 @@ const std = @import("std");
 const utils = @import("../lib/utils.zig");
 const builtin = @import("builtin");
 
-const fmt = std.fmt;
+/// Writer type for std library integration
 const Writer = std.io.Writer;
 
 /// VGA text mode width
@@ -73,14 +73,14 @@ pub const VgaTextEntry = struct {
 
 /// VGA text mode driver
 pub const VgaTextDriver = struct {
+    /// Pointer to VGA buffer (memory-mapped)
+    buffer: [*]volatile u16,
     /// Current cursor position
     row: usize,
     /// Current cursor position
     column: usize,
     /// Current text color
     color: VgaTextColor,
-    /// Pointer to VGA buffer (memory-mapped)
-    buffer: [*]volatile u16,
 
     /// Initialize a VGA text mode driver
     pub fn init(buffer_addr: usize) VgaTextDriver {
@@ -93,11 +93,10 @@ pub const VgaTextDriver = struct {
 
         var driver: VgaTextDriver = undefined;
         driver = VgaTextDriver{
+            .buffer = @ptrFromInt(buffer_addr),
             .row = 0,
             .column = 0,
             .color = VgaTextColor.new(.GREEN, .BLACK),
-            .buffer = @ptrFromInt(buffer_addr),
-            // .writer = .{ .context = &driver },
         };
         driver.clear();
         driver.updateCursor();
@@ -126,6 +125,18 @@ pub const VgaTextDriver = struct {
                 const next_index = (y - 1) * VGA_TEXT_WIDTH + x;
                 self.buffer[next_index] = self.buffer[index];
             }
+        }
+
+        // Clear the last line
+        const last_row = VGA_TEXT_HEIGHT - 1;
+        for (0..VGA_TEXT_WIDTH) |x| {
+            const index = last_row * VGA_TEXT_WIDTH + x;
+            self.buffer[index] = VgaTextEntry.new(' ', self.color).code;
+        }
+
+        // Update cursor position
+        if (self.row > 0) {
+            self.row -= 1;
         }
         self.updateCursor();
     }
@@ -158,14 +169,24 @@ pub const VgaTextDriver = struct {
 
     /// Put a character to the VGA buffer
     pub fn putChar(self: *VgaTextDriver, ch: u8) void {
-        self.putCharAt(ch, self.column, self.row);
-        self.column += 1;
-        if (self.column == VGA_TEXT_WIDTH) {
+        switch (ch) {
+            '\n' => {
+                self.column = 0;
+                self.row += 1;
+            },
+            else => {
+                self.putCharAt(ch, self.column, self.row);
+                self.column += 1;
+            },
+        }
+        if (self.column >= VGA_TEXT_WIDTH) {
             self.column = 0;
             self.row += 1;
-            if (self.row == VGA_TEXT_HEIGHT) {
-                self.scroll();
-            }
+        }
+        if (self.row >= VGA_TEXT_HEIGHT) {
+            // When we reach the bottom of the screen, scroll instead of resetting row
+            self.scroll();
+            // No need to set row to 0, scroll() already decremented the row
         }
         self.updateCursor();
     }
@@ -198,5 +219,3 @@ pub const VgaTextDriver = struct {
         self.writer().print(format ++ "\n", args) catch unreachable;
     }
 };
-
-// pub const writer = Writer(*VgaTextDriver, error{}, VgaTextDriver.writerCallback){ .context = &default_driver };

@@ -65,11 +65,10 @@ pub fn main() void {
     while (i < 30) { // Intentionally print more than 25 lines to demonstrate scrolling
         if (i % 2 == 0) {
             vga_text_driver.setColor(vga.VgaTextColor.new(.LIGHT_RED, .BLACK));
-            // vga_text_driver.println("Hello, green world!", .{});
-            vga_text_driver.putStr("Hello, red world!\n");
+            vga_text_driver.println("Hello, red world!", .{});
         } else {
             vga_text_driver.setColor(vga.VgaTextColor.new(.LIGHT_GREEN, .BLACK));
-            vga_text_driver.putStr("Hello, green world!\n");
+            vga_text_driver.println("Hello, green world!", .{});
         }
         i += 1;
     }

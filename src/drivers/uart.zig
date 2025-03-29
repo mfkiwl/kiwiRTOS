@@ -1,10 +1,18 @@
 //! This file provides a UART driver based on the OpenSBI NS16550 UART driver.
 
 const std = @import("std");
-const utils = @import("../lib/utils.zig");
+const builtin = @import("builtin");
 
-/// Physical memory address of the UART
-pub const UART_BASE = 0x10000000; // QEMU RISC-V virtual platform
+/// Writer type for std library integration
+const Writer = std.io.Writer;
+
+/// UART buffer address
+pub const UART_BUFFER = switch (builtin.cpu.arch) {
+    .x86 => 0x3F8,
+    .aarch64 => 0x10000000, // QEMU AArch64 virtual platform
+    .riscv64, .riscv32 => 0x10000000, // QEMU RISC-V virtual platform
+    else => @compileError("Unsupported architecture"),
+};
 
 /// UART register offsets
 pub const UartRegisters = struct {
@@ -36,8 +44,8 @@ pub const UartLSRFlags = struct {
 
 /// UART driver
 pub const UartDriver = struct {
-    /// Base address of this UART device
-    base_addr: usize,
+    /// Pointer to UART buffer (memory-mapped)
+    buffer: [*]volatile u8,
     /// Current baud rate
     baud_rate: u32,
     /// Current data bits
@@ -50,34 +58,36 @@ pub const UartDriver = struct {
     writer: Writer,
 
     /// Initialize a new UART driver
-    pub fn init(self: *UartDriver, base_addr: usize, baud_rate: u32) void {
-        self.base_addr = base_addr;
-        self.baud_rate = baud_rate;
-        self.data_bits = 8;
-        self.stop_bits = 1;
-        self.parity = 0;
-        self.writer = .{ .context = self };
+    pub fn init(buffer_addr: usize, baud_rate: u32) UartDriver {
+        var driver: UartDriver = undefined;
+        driver = UartDriver{
+            .buffer = @ptrFromInt(buffer_addr),
+            .baud_rate = baud_rate,
+            .data_bits = 8,
+            .stop_bits = 1,
+            .parity = 0,
+        };
 
         const lcr = (1 << 0) | (1 << 1);
-        utils.writeByte(self.base_addr + UartRegisters.LCR, lcr);
-        utils.writeByte(self.base_addr + UartRegisters.FCR, (1 << 0));
-        utils.writeByte(self.base_addr + UartRegisters.IER, (1 << 0));
-        utils.writeByte(self.base_addr + UartRegisters.LCR, lcr | (1 << 7));
+        driver.buffer[UartRegisters.LCR] = lcr;
+        driver.buffer[UartRegisters.FCR] = (1 << 0);
+        driver.buffer[UartRegisters.IER] = (1 << 0);
+        driver.buffer[UartRegisters.LCR] = lcr | (1 << 7);
 
         const divisor: u16 = 592;
         const divisor_least: u8 = divisor & 0xff;
         const divisor_most: u8 = divisor >> 8;
-        utils.writeByte(self.base_addr + UartRegisters.DLL, divisor_least);
-        utils.writeByte(self.base_addr + UartRegisters.DLM, divisor_most);
-        utils.writeByte(self.base_addr + UartRegisters.LCR, lcr);
+        driver.buffer[UartRegisters.DLL] = divisor_least;
+        driver.buffer[UartRegisters.DLM] = divisor_most;
+        driver.buffer[UartRegisters.LCR] = lcr;
     }
 
     pub fn putChar(self: *UartDriver, ch: u8) void {
         // Wait for transmission bit to be empty before enqueuing more characters
         // to be outputted.
-        while ((utils.readByte(self.base_addr + UartRegisters.LSR) & UartLSRFlags.THRE) == 0) {}
+        while ((self.buffer[UartRegisters.LSR] & UartLSRFlags.THRE) == 0) {}
 
-        utils.writeByte(self.base_addr + UartRegisters.RBR, ch);
+        self.buffer[UartRegisters.RBR] = ch;
     }
 
     pub fn putStr(self: *UartDriver, str: []const u8) !usize {
@@ -96,6 +106,3 @@ pub const UartDriver = struct {
         self.writer.print(fmt ++ "\n", args) catch {};
     }
 };
-
-/// Writer type for std library integration
-const Writer = std.io.Writer(*UartDriver, error{}, UartDriver.writerFn);
