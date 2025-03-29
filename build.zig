@@ -138,6 +138,11 @@ pub fn build(b: *std.Build) anyerror!void {
         .x86 => "pentium",
     };
 
+    const qemu_device = switch (target_arch) {
+        .x86 => "virtio-gpu-pci",
+        else => "virtio-gpu-device, virtio-keyboard-device, virtio-mouse-device",
+    };
+
     const display = if (builtin.os.tag == .macos) "cocoa" else "sdl";
     const kernel_path = "zig-out/bin/" ++ kernel_name;
 
@@ -149,6 +154,7 @@ pub fn build(b: *std.Build) anyerror!void {
         "-machine",
         qemu_machine,
         // "-bios",
+        // "default",
         // "none",
         "-kernel",
         kernel_path,
@@ -157,13 +163,9 @@ pub fn build(b: *std.Build) anyerror!void {
         "-cpu",
         qemu_cpu,
         "-smp",
-        "4",
-        // "-device",
-        // "virtio-gpu-device",
-        // "-device",
-        // "virtio-keyboard-device",
-        // "-device",
-        // "virtio-mouse-device",
+        "4", // Number of cores
+        "-device",
+        qemu_device,
         "-display",
         display,
         "-serial",
@@ -174,7 +176,7 @@ pub fn build(b: *std.Build) anyerror!void {
 
     qemu_cmd.step.dependOn(b.getInstallStep());
     if (b.args) |args| qemu_cmd.addArgs(args);
-    const run_step = b.step("run", "Start the kernel in qemu");
+    const run_step = b.step("run", "Start the kernel with QEMU");
     run_step.dependOn(&qemu_cmd.step);
 
     const install_docs = b.addInstallDirectory(.{
