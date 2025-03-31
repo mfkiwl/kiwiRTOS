@@ -89,6 +89,7 @@ pub fn build(b: *std.Build) anyerror!void {
         .name = kernel_name,
         .code_model = switch (target_arch) {
             .riscv64, .riscv32 => .medium,
+            .x86 => .default,
             else => .kernel,
         },
     });
@@ -101,7 +102,7 @@ pub fn build(b: *std.Build) anyerror!void {
         .x86 => "src/arch/x86/linker.ld",
     };
 
-    kernel.setLinkerScriptPath(b.path(linker_script));
+    kernel.setLinkerScript(b.path(linker_script));
 
     // Set the boot-code depending on the target architecture
     const boot_code = switch (target_arch) {
