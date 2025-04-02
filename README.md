@@ -14,12 +14,12 @@
 
 </div>
 
-<a href="https://github.com/Kaweees/kiwiRTOS">
+<a href="https://kaweees.github.io/kiwiRTOS">
   <img alt="Zig Logo" src="assets/img/zig-mark.svg" align="right" width="150">
 </a>
 
 <div align="left">
-  <h1><em><a href="https://miguelvf.dev/blog/dotfiles/compendium">~kiwiRTOS</a></em></h1>
+  <h1><em><a href="https://kaweees.github.io/kiwiRTOS">~kiwiRTOS</a></em></h1>
 </div>
 
 <!-- ABOUT THE PROJECT -->
