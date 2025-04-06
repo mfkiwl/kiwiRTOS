@@ -4,16 +4,16 @@ let
   # Check if we're on Darwin (macOS)
   isDarwin = pkgs.stdenv.isDarwin;
 in pkgs.mkShell {
-  buildInputs = with pkgs; [
-    neofetch # System information tool
-    just # Just runner
-    zig # Zig compiler
-    xorriso # ISO image creator
-    cdrtools # CD-ROM tools
-    qemu # For testing the OS
+  buildInputs = [
+    pkgs.neofetch # System information tool
+    pkgs.just # Just runner
+    pkgs.zig # Zig compiler
+    pkgs.xorriso # ISO image creator
+    pkgs.cdrtools # CD-ROM tools
+    pkgs.qemu # For testing the OS
 
     # Include tools conditionally based on platform
-    (lib.optional (!isDarwin) grub2) # GRUB bootloader (Linux only)
+    (pkgs.lib.optional (!isDarwin) pkgs.grub2) # GRUB bootloader (Linux only)
   ];
 
   # Shell hook to set up environment

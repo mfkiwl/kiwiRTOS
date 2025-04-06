@@ -6,7 +6,7 @@ inputs:
   zig-version:
     description: "Zig version to use"
     required: true
-    default: "0.13.0"
+    default: "0.14.0"
   just-version:
     description: "just version to use"
     required: true

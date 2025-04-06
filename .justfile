@@ -1,11 +1,12 @@
+# Set default variables
+ZIG_LOCAL_CACHE_DIR := env_var_or_default('ZIG_LOCAL_CACHE_DIR', home_directory() + "./.cache/zig")
+
 alias r := run
 alias b := build
 alias c := clean
 alias ch := check
 alias f := format
 alias d := docs
-
-ZIG_LOCAL_CACHE_DIR := "./.cache/zig"
 
 # Run a package
 run *args='x86':
