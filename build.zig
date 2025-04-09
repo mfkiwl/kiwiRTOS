@@ -165,6 +165,14 @@ pub fn build(b: *std.Build) anyerror!void {
 
     b.installArtifact(kernel);
 
+    // Image creation command
+    const image_step = b.step("image", "Create the image file");
+    image_step.dependOn(b.getInstallStep());
+    const image_cmd = b.addSystemCommand(&.{
+        "sudo", "-E", "./scripts/image.sh", kernel_path, image_path, target_arch_str,
+    });
+    image_step.dependOn(&image_cmd.step);
+
     // Set up QEMU command based on architecture
     const qemu = switch (target_arch) {
         .riscv64 => "qemu-system-riscv64",
@@ -181,7 +189,7 @@ pub fn build(b: *std.Build) anyerror!void {
     const qemu_args = [_][]const u8{
         qemu,
         "-drive",
-        b.fmt("format=raw,file={s}", .{kernel_path}),
+        b.fmt("format=raw,file={s}", .{image_path}),
         "-display",
         display,
         "-serial",
@@ -195,7 +203,7 @@ pub fn build(b: *std.Build) anyerror!void {
     // Standard run command
     const run_cmd = b.addSystemCommand(&qemu_args);
 
-    run_cmd.step.dependOn(b.getInstallStep());
+    run_cmd.step.dependOn(image_step);
     const run_step = b.step("run", "Start the kernel with QEMU");
     run_step.dependOn(&run_cmd.step);
 
@@ -208,18 +216,9 @@ pub fn build(b: *std.Build) anyerror!void {
     };
 
     const debug_cmd = b.addSystemCommand(&qemu_debug_args);
-    debug_cmd.step.dependOn(b.getInstallStep());
+    debug_cmd.step.dependOn(image_step);
     const debug_step = b.step("debug", "Start the kernel with QEMU in debug mode");
     debug_step.dependOn(&debug_cmd.step);
-
-    // Image creation command
-    const image_step = b.step("image", "Create the image file");
-    image_step.dependOn(b.getInstallStep());
-    const image_cmd = b.addSystemCommand(&.{
-        "sudo", "-E",    "./scripts/image.sh", kernel_path, image_path, target_arch_str,
-        "sudo", "chown", "$(USER):$(USER)",    image_path,
-    });
-    image_step.dependOn(&image_cmd.step);
 
     // Documentation step
     const install_docs = b.addInstallDirectory(.{

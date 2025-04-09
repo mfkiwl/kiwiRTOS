@@ -21,7 +21,7 @@ image() {
   mkdir -p "${boot_files_dir}"
   sudo mkdir -p "${boot_files_dir}/boot/grub"
   sudo cp -r ./src/arch/${kernel_arch}/grub.cfg "${boot_files_dir}/boot/grub/"
-  sudo cp -r "${kernel_file}" "${boot_files_dir}/boot/kiwios.bin"
+  sudo cp -r "${kernel_file}" "${boot_files_dir}/boot/kiwirtos.bin"
   # Create a zeroed out disk image file
   dd if=/dev/zero of="${image_file}" bs=512 count=32768
   # Add a Master Boot Record (MBR) to the image
@@ -73,10 +73,14 @@ image() {
   # Clean up
   rm -rf "${boot_files_dir}"
   rm -rf "${mount_point}"
+
+  # Set the ownership of the image file to the current user
+  # TODO: This is a hack to get around the fact that the image file is created by root
+  sudo chown $USER:$USER "${image_file}"
 }
 
 # Main script logic
-set -e # Exit on error
+# set -e # Exit on error
 if [ $# -eq 3 ]; then
   image "$1" "$2" "$3"
 else

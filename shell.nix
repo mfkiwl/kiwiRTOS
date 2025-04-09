@@ -3,6 +3,9 @@
 let
   # Check if we're on Darwin (macOS)
   isDarwin = pkgs.stdenv.isDarwin;
+
+  # GRUB cross-compilation: target a 32-bit (i386-pc) environment.
+  grubPkgs = import <nixpkgs> { crossSystem = { config = "i686-linux"; }; };
 in pkgs.mkShell {
   buildInputs = [
     pkgs.neofetch # System information tool
@@ -14,9 +17,13 @@ in pkgs.mkShell {
     pkgs.qemu # For testing the OS
 
     # Include tools conditionally based on platform
-    (pkgs.lib.optional (!isDarwin) pkgs.grub2) # GRUB bootloader (Linux only)
+    (pkgs.lib.optional (!isDarwin) grubPkgs.grub2) # GRUB bootloader for i386-pc
   ];
 
   # Shell hook to set up environment
-  shellHook = "";
+  shellHook = ''
+    # Set GRUB_DIR to the GRUB installation containing i386-pc modules
+    export GRUB_DIR="${grubPkgs.grub2}/lib/grub"
+    echo "GRUB cross-compilation environment loaded from: $GRUB_DIR"
+  '';
 }
