@@ -1,24 +1,16 @@
-ENTRY(_start)
+ENTRY(start)
 
 SECTIONS {
-    . = 2M;
+  . = 1M;
 
-    .text : ALIGN(4K) {
-        /* We need to specify KEEP to prevent the linker from garbage-collecting the multiboot section. */
-        KEEP(*(.multiboot))
-        *(.text)
-    }
+  .boot :
+  {
+    /* ensure that the multiboot header is at the beginning */
+    *(.multiboot_header)
+  }
 
-    .rodata : ALIGN(4K) {
-        *(.rodata)
-    }
-
-    .data : ALIGN(4K) {
-        *(.data)
-    }
-
-    .bss : ALIGN(4K) {
-        *(COMMON)
-        *(.bss)
-    }
+  .text :
+  {
+    *(.text)
+  }
 }

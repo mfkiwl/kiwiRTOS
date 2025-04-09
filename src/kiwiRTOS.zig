@@ -10,6 +10,7 @@
 //! - `services`: Handles services for the RTOS
 //! - `syscalls`: Handles system calls for the RTOS
 
+pub const arch = @import("arch/arch.zig");
 pub const vga = @import("drivers/vga.zig");
 pub const uart = @import("drivers/uart.zig");
 pub const utils = @import("lib/utils.zig");
