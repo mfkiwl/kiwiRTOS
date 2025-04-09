@@ -28,8 +28,7 @@
         - name: Set up the environment
           uses: ./.github/actions/setup-zig-env
         - name: Compile Documentation
-          run: |
-            just docs
+          run: just docs
         - name: Post Processing
           run: |
             mkdir -p build

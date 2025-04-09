@@ -24,3 +24,5 @@ runs:
       uses: extractions/setup-just@v2
       with:
         version: ${{ inputs.just-version }}
+    - name: Setup NASM
+      uses: ilammy/setup-nasm@v1
