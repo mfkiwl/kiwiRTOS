@@ -80,7 +80,7 @@ image() {
 }
 
 # Main script logic
-# set -e # Exit on error
+set -e # Exit on error
 if [ $# -eq 3 ]; then
   image "$1" "$2" "$3"
 else
