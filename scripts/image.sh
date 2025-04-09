@@ -76,7 +76,7 @@ image() {
 
   # Set the ownership of the image file to the current user
   # TODO: This is a hack to get around the fact that the image file is created by root
-  sudo chown $USER:$USER "${image_file}"
+  # sudo chown $USER:$USER "${image_file}"
 }
 
 # Main script logic

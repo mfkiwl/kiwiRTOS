@@ -168,10 +168,16 @@ pub fn build(b: *std.Build) anyerror!void {
     // Image creation command
     const image_step = b.step("image", "Create the image file");
     image_step.dependOn(b.getInstallStep());
+
+    // Create the image with sudo
     const image_cmd = b.addSystemCommand(&.{
         "sudo", "-E", "./scripts/image.sh", kernel_path, image_path, target_arch_str,
     });
-    image_step.dependOn(&image_cmd.step);
+
+    // Get current user from environment variable
+    const user = std.process.getEnvVarOwned(b.allocator, "USER") catch "ubuntu";
+    const chmod_cmd = b.addSystemCommand(&.{ "sudo", "chown", b.fmt("{s}:{s}", .{ user, user }), image_path });
+    chmod_cmd.step.dependOn(&image_cmd.step);
 
     // Set up QEMU command based on architecture
     const qemu = switch (target_arch) {
@@ -202,9 +208,9 @@ pub fn build(b: *std.Build) anyerror!void {
 
     // Standard run command
     const run_cmd = b.addSystemCommand(&qemu_args);
-
     run_cmd.step.dependOn(image_step);
     const run_step = b.step("run", "Start the kernel with QEMU");
+    run_step.dependOn(&chmod_cmd.step);
     run_step.dependOn(&run_cmd.step);
 
     // Debug command
@@ -218,7 +224,7 @@ pub fn build(b: *std.Build) anyerror!void {
     const debug_cmd = b.addSystemCommand(&qemu_debug_args);
     debug_cmd.step.dependOn(image_step);
     const debug_step = b.step("debug", "Start the kernel with QEMU in debug mode");
-    debug_step.dependOn(&debug_cmd.step);
+    debug_step.dependOn(&chmod_cmd.step);
 
     // Documentation step
     const install_docs = b.addInstallDirectory(.{
