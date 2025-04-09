@@ -23,3 +23,6 @@ zig-cache/
 
 # Log files
 *.log
+
+# Image files
+*.img

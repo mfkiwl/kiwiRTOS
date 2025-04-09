@@ -30,7 +30,7 @@ debug arch='x86_64':
 # Clean the project
 clean:
   @# Remove cached files
-  rm -rf .zig-cache zig-out
+  @sudo rm -rf .zig-cache zig-out .img
 
 # Run code quality tools
 check:
@@ -39,7 +39,7 @@ check:
 # Format the project
 format:
   zig fmt .
-
+  nixfmt .
 # Generate documentation
 docs arch='x86_64':
   zig build docs -Dtarget_arch={{arch}}

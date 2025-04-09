@@ -15,6 +15,7 @@ in pkgs.mkShell {
     pkgs.nasm # NASM assembler
     pkgs.cdrtools # CD-ROM tools
     pkgs.qemu # For testing the OS
+    pkgs.nixfmt # Nix formatter
 
     # Include tools conditionally based on platform
     (pkgs.lib.optional (!isDarwin) grubPkgs.grub2) # GRUB bootloader for i386-pc

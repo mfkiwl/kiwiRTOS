@@ -22,12 +22,16 @@ pub fn build(b: *std.Build) anyerror!void {
         std.debug.print("Error: Invalid target architecture '{s}'. Supported architectures are: riscv32, riscv64, arm, x86_64\n", .{target_arch_str});
         return error.InvalidTargetArch;
     };
-
-    const target_name = b.fmt("kiwiRTOS-{s}", .{target_arch_str});
+    const target_name = "kiwiRTOS";
+    const target_arch_name = b.fmt("{s}-{s}", .{ target_name, target_arch_str });
     const kernel_name = b.fmt("{s}.bin", .{target_name});
     const kernel_path = b.fmt("zig-out/bin/{s}", .{kernel_name});
+    const target_path = b.fmt("zig-out/bin/{s}", .{target_name});
     const image_name = b.fmt("{s}.img", .{target_name});
     const image_path = b.fmt("zig-out/bin/{s}", .{image_name});
+
+    // Print the target architecture
+    std.debug.print("Building for {s}\n", .{target_arch_name});
 
     var disabled_features = Feature.Set.empty;
     var enabled_features = Feature.Set.empty;
@@ -95,7 +99,7 @@ pub fn build(b: *std.Build) anyerror!void {
         .root_source_file = b.path("src/kiwiRTOS.zig"),
         .optimize = optimize,
         .target = target,
-        .name = kernel_name,
+        .name = target_name,
         .code_model = switch (target_arch) {
             .riscv64, .riscv32 => .medium,
             .x86_64 => .default,
@@ -169,10 +173,16 @@ pub fn build(b: *std.Build) anyerror!void {
     const image_step = b.step("image", "Create the image file");
     image_step.dependOn(b.getInstallStep());
 
+    const mv_cmd = b.addSystemCommand(&.{
+        "mv", target_path, kernel_path,
+    });
+    mv_cmd.step.dependOn(b.getInstallStep());
+
     // Create the image with sudo
     const image_cmd = b.addSystemCommand(&.{
         "sudo", "-E", "./scripts/image.sh", kernel_path, image_path, target_arch_str,
     });
+    image_cmd.step.dependOn(&mv_cmd.step);
 
     // Get current user from environment variable
     const user = std.process.getEnvVarOwned(b.allocator, "USER") catch "ubuntu";
@@ -208,9 +218,8 @@ pub fn build(b: *std.Build) anyerror!void {
 
     // Standard run command
     const run_cmd = b.addSystemCommand(&qemu_args);
-    run_cmd.step.dependOn(image_step);
+    run_cmd.step.dependOn(&chmod_cmd.step);
     const run_step = b.step("run", "Start the kernel with QEMU");
-    run_step.dependOn(&chmod_cmd.step);
     run_step.dependOn(&run_cmd.step);
 
     // Debug command
