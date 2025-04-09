@@ -1,8 +1,8 @@
 //! This file provides a VGA text mode driver (80x25)
 
-const std = @import("std");
-const utils = @import("../lib/utils.zig");
+const arch = @import("../arch/arch.zig");
 const builtin = @import("builtin");
+const std = @import("std");
 
 /// Writer type for std library integration
 const Writer = std.io.Writer;
@@ -15,11 +15,7 @@ pub const VGA_TEXT_HEIGHT = @as(usize, 25);
 pub const VGA_TEXT_SIZE = VGA_TEXT_WIDTH * VGA_TEXT_HEIGHT;
 
 /// VGA text mode buffer address
-pub const VGA_TEXT_BUFFER = switch (builtin.cpu.arch) {
-    .x86 => 0xB8000,
-    .aarch64, .riscv64, .riscv32 => 0x09000000,
-    else => @compileError("Unsupported architecture"),
-};
+pub const VGA_TEXT_BUFFER = arch.VGA_TEXT_BUFFER;
 
 /// VGA I/O ports
 const VGA_CRTC_INDEX = 0x3D4;
@@ -85,11 +81,11 @@ pub const VgaTextDriver = struct {
     /// Initialize a VGA text mode driver
     pub fn init(buffer_addr: usize) VgaTextDriver {
         // Enable the cursor
-        utils.outb(VGA_CRTC_INDEX, 0x0A);
-        utils.outb(VGA_CRTC_DATA, (utils.inb(VGA_CRTC_DATA) & 0xC0) | 0);
+        arch.outb(VGA_CRTC_INDEX, 0x0A);
+        arch.outb(VGA_CRTC_DATA, (arch.inb(VGA_CRTC_DATA) & 0xC0) | 0);
 
-        utils.outb(VGA_CRTC_INDEX, 0x0B);
-        utils.outb(VGA_CRTC_DATA, (utils.inb(VGA_CRTC_DATA) & 0xE0) | 15);
+        arch.outb(VGA_CRTC_INDEX, 0x0B);
+        arch.outb(VGA_CRTC_DATA, (arch.inb(VGA_CRTC_DATA) & 0xE0) | 15);
 
         var driver: VgaTextDriver = undefined;
         driver = VgaTextDriver{
@@ -146,12 +142,12 @@ pub const VgaTextDriver = struct {
         const pos = self.row * VGA_TEXT_WIDTH + self.column;
 
         // Send high byte of cursor position
-        utils.outb(VGA_CRTC_INDEX, VGA_CURSOR_HIGH);
-        utils.outb(VGA_CRTC_DATA, @as(u8, @truncate(pos >> 8)));
+        arch.outb(VGA_CRTC_INDEX, VGA_CURSOR_HIGH);
+        arch.outb(VGA_CRTC_DATA, @as(u8, @truncate(pos >> 8)));
 
         // Send low byte of cursor position
-        utils.outb(VGA_CRTC_INDEX, VGA_CURSOR_LOW);
-        utils.outb(VGA_CRTC_DATA, @as(u8, @truncate(pos)));
+        arch.outb(VGA_CRTC_INDEX, VGA_CURSOR_LOW);
+        arch.outb(VGA_CRTC_DATA, @as(u8, @truncate(pos)));
     }
 
     /// Set the current color of the VGA driver

@@ -1,6 +1,6 @@
 //! Root module for kiwiRTOS
 //!
-//! A minimal Real-Time Operating System (RTOS) designed for embedded applications with targets for x86, RISC-V (RV32I, RV64I) and ARM written in Zig
+//! A minimal Real-Time Operating System (RTOS) designed for embedded applications with targets for x86_64, RISC-V (RV32I, RV64I) and ARM written in Zig
 //!
 //! ## Modules
 //! - `arch`: Handles architecture-specific code
@@ -14,25 +14,6 @@ pub const arch = @import("arch/arch.zig");
 pub const vga = @import("drivers/vga.zig");
 pub const uart = @import("drivers/uart.zig");
 pub const utils = @import("lib/utils.zig");
-
-const ALIGN = 1 << 0;
-const MEMINFO = 1 << 1;
-const MB1_MAGIC: u32 = 0x1BADB002;
-const FLAGS: u32 = ALIGN | MEMINFO;
-
-const MultibootHeader = extern struct {
-    magic: u32 = MB1_MAGIC,
-    flags: u32,
-    checksum: u32,
-};
-
-export var multiboot align(4) linksection(".multiboot") = MultibootHeader{
-    .flags = FLAGS,
-    .checksum = @as(u32, 0) -% (MB1_MAGIC + FLAGS),
-};
-
-// Stack for the kernel
-var stack_buffer: [16 * 1024]u8 align(16) linksection(".bss") = undefined;
 
 // This the trap/exception entrypoint, this will be invoked any time
 // we get an exception (e.g if something in the kernel goes wrong) or

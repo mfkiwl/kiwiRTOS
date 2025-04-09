@@ -1,18 +1,14 @@
 //! This file provides a UART driver based on the OpenSBI NS16550 UART driver.
 
-const std = @import("std");
+const arch = @import("../arch/arch.zig");
 const builtin = @import("builtin");
+const std = @import("std");
 
 /// Writer type for std library integration
 const Writer = std.io.Writer;
 
 /// UART buffer address
-pub const UART_BUFFER = switch (builtin.cpu.arch) {
-    .x86 => 0x3F8,
-    .aarch64 => 0x10000000, // QEMU AArch64 virtual platform
-    .riscv64, .riscv32 => 0x10000000, // QEMU RISC-V virtual platform
-    else => @compileError("Unsupported architecture"),
-};
+pub const UART_BUFFER = arch.UART_BUFFER;
 
 /// UART register offsets
 pub const UartRegisters = struct {

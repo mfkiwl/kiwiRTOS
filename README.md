@@ -24,7 +24,7 @@
 
 <!-- ABOUT THE PROJECT -->
 
-A minimal Real-Time Operating System (RTOS) designed for embedded applications with targets for x86, RISC-V (RV32I, RV64I) and ARM written in Zig.
+A minimal Real-Time Operating System (RTOS) designed for embedded applications with targets for x86_64, RISC-V (RV32I, RV64I) and ARM written in Zig.
 
 ### Built With
 

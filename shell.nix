@@ -9,6 +9,7 @@ in pkgs.mkShell {
     pkgs.just # Just runner
     pkgs.zig # Zig compiler
     pkgs.xorriso # ISO image creator
+    pkgs.nasm # NASM assembler
     pkgs.cdrtools # CD-ROM tools
     pkgs.qemu # For testing the OS
 
