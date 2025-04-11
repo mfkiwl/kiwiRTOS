@@ -13,6 +13,7 @@
 pub const arch = @import("arch/arch.zig");
 pub const drivers = @import("drivers/drivers.zig");
 pub const kernel = @import("kernel/kernel.zig");
+pub const lib = @import("lib/lib.zig");
 
 // This the trap/exception entrypoint, this will be invoked any time
 // we get an exception (e.g if something in the kernel goes wrong) or

@@ -23,11 +23,10 @@ pub const VGA_TEXT_BUFFER = 0xB8000;
 /// UART buffer address for x86_64
 pub const UART_BUFFER = 0x3F8;
 
+// PS/2 Controller I/O Ports
 /// PS/2 controller data port (read/write)
 pub const PS2_DATA_PORT = 0x60;
-
 /// PS/2 controller status port (read)
 pub const PS2_STATUS_PORT = 0x64;
-
 /// PS/2 controller command port (write)
 pub const PS2_COMMAND_PORT = 0x64;

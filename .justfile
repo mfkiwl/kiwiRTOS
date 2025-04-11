@@ -30,7 +30,7 @@ debug arch='x86_64':
 # Clean the project
 clean:
   @# Remove cached files
-  @sudo rm -rf .zig-cache zig-out .img
+  @sudo rm -rf .zig-cache zig-out .img qemu.log
 
 # Run code quality tools
 check:
@@ -40,6 +40,7 @@ check:
 format:
   zig fmt .
   nixfmt .
+
 # Generate documentation
 docs arch='x86_64':
   zig build docs -Dtarget_arch={{arch}}

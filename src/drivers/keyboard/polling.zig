@@ -4,91 +4,20 @@ const arch = @import("../../arch/arch.zig");
 const ps2 = @import("../ps2.zig");
 const std = @import("std");
 
-// // PS/2 Controller I/O Ports
-// const PS2_DATA_PORT: u16 = 0x60;
-// // PS/2 Controller I/O Ports
-// const PS2_DATA_PORT: u16 = 0x60;
-// const PS2_COMMAND_PORT: u16 = 0x64;
-// const PS2_STATUS_PORT: u16 = 0x64;
-
-/// PS/2 controller data port
-pub const PS2_DATA_PORT = arch.PS2_DATA_PORT;
-
-/// PS/2 controller status port
-pub const PS2_STATUS_PORT = arch.PS2_STATUS_PORT;
-
-/// PS/2 controller command port
-pub const PS2_COMMAND_PORT = arch.PS2_COMMAND_PORT;
-
-/// PS/2 controller status register
-pub const PS2_STATUS_REGISTER = StatusRegister;
-
-pub const StatusRegister = packed struct {
-    /// Output buffer status (0 = empty, 1 = full)
-    outputBuffer: u1,
-    /// Input buffer status (0 = empty, 1 = full)
-    inputBuffer: u1,
-    /// System Flag (0 = cleared, 1 = set after self-test pass)
-    systemFlag: u1,
-    /// Command/data flag (0 = data for PS/2 device, 1 = for PS/2 command)
-    commandData: u1,
-    /// Chipset specific, possibly keyboard lock
-    unknown: u1,
-    /// Chip specific, possibly receive time-out or second port
-    unknown2: u1,
-    /// Time-out error (0 = no error, 1 = error)
-    timeoutError: u1,
-    /// Parity error (0 = no error, 1 = error)
-    parityError: u1,
+/// PS/2 keyboard commands
+pub const KeyboardCommand = enum(u8) {
+    pub const KB_CMD_RESET: u8 = 0xFF;
+    pub const KB_CMD_SET_SCANCODE: u8 = 0xF0;
+    pub const KB_CMD_ENABLE: u8 = 0xF4;
+    pub const KB_CMD_SET_LEDS: u8 = 0xED;
 };
 
-// // PS/2 Controller Commands
-// const PS2_CMD_READ_CONFIG: u8 = 0x20;
-// const PS2_CMD_WRITE_CONFIG: u8 = 0x60;
-// const PS2_CMD_DISABLE_PORT1: u8 = 0xAD;
-// const PS2_CMD_DISABLE_PORT2: u8 = 0xA7;
-// const PS2_CMD_ENABLE_PORT1: u8 = 0xAE;
-
-// // PS/2 Keyboard Commands
-// const KB_CMD_RESET: u8 = 0xFF;
-// const KB_CMD_SET_SCANCODE: u8 = 0xF0;
-// const KB_CMD_ENABLE: u8 = 0xF4;
-// const KB_CMD_SET_LEDS: u8 = 0xED;
-
-// // PS/2 Controller Status Bits
-// const PS2_STATUS_OUTPUT_FULL: u8 = 0x01;
-// const PS2_STATUS_INPUT_FULL: u8 = 0x02;
-
-// // PS/2 Controller Config Bits
-// const PS2_CONFIG_PORT1_INT: u8 = 0x01;
-// const PS2_CONFIG_PORT2_INT: u8 = 0x02;
-// const PS2_CONFIG_PORT1_CLK: u8 = 0x10;
-// const PS2_CONFIG_PORT2_CLK: u8 = 0x20;
-
-// // PS/2 Keyboard Responses
-// const KB_RESP_ACK: u8 = 0xFA;
-// const KB_RESP_RESEND: u8 = 0xFE;
-// const KB_RESP_SELF_TEST_PASS: u8 = 0xAA;
-
-// // Print functions for debug
-// extern fn printk(fmt: [*:0]const u8, ...) void;
-
-// /// Read a byte from an I/O port
-// inline fn inb(port: u16) u8 {
-//     return asm volatile ("inb %[port], %[result]"
-//         : [result] "={al}" (-> u8),
-//         : [port] "N{dx}" (port),
-//     );
-// }
-
-// /// Write a byte to an I/O port
-// inline fn outb(port: u16, value: u8) void {
-//     asm volatile ("outb %[value], %[port]"
-//         :
-//         : [value] "{al}" (value),
-//           [port] "N{dx}" (port),
-//     );
-// }
+/// PS/2 keyboard responses
+pub const KeyboardResponse = enum(u8) {
+    pub const ACK: u8 = 0xFA;
+    pub const RESEND: u8 = 0xFE;
+    pub const SELF_TEST_PASS: u8 = 0xAA;
+};
 
 // /// Wait for PS/2 controller to be ready for writing
 // fn ps2WaitWrite() void {
