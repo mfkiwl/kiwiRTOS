@@ -37,6 +37,8 @@ pub const ConfigurationByte = packed struct {
     reserved1: u1,
     /// First PS/2 port clock (1 = disabled, 0 = enabled)
     port1Clock: u1,
+    /// Second PS/2 port clock (1 = disabled, 0 = enabled, only if 2 PS/2 ports supported)
+    port2Clock: u1,
     /// First PS/2 port translation (1 = enabled, 0 = disabled)
     port1Translation: u1,
     /// Must be zero
@@ -111,16 +113,17 @@ pub const Ps2Driver = struct {
 
         // TODO: Ask the order in which I should enable the clock and interrupts on both PS/2 ports
 
-        // Enable the clock interrupts on both PS/2 ports
-        driver.writeCommand(ControllerCommand.ENABLE_PORT1_CLK);
-        // driver.writeCommand(ControllerCommand.ENABLE_PORT1);
-        driver.writeCommand(ControllerCommand.ENABLE_PORT2_CLK);
-        // driver.writeCommand(ControllerCommand.ENABLE_PORT2);
+        // Enable the clock and interrupts on both PS/2 ports
+        driver.config.port1Clock = 0;
+        // driver.config.port1Interrupt = 1;
+        driver.config.port2Clock = 0;
+        // driver.config.port2Interrupt = 1;
+        driver.writeConfig(driver.config);
 
-        // Write the configuration byte back out to the PS/2 controller. This is a two
-        // step process that involves polling the status register until the output buffer is empty.
-        driver.writeCommand(ControllerCommand.WRITE_CONFIG);
-        driver.writeCommand(driver.config);
+        // Enable devices connected to both PS/2 ports
+        driver.writeCommand(ControllerCommand.ENABLE_PORT1);
+        driver.writeCommand(ControllerCommand.ENABLE_PORT2);
+
         return driver;
     }
 
@@ -129,7 +132,7 @@ pub const Ps2Driver = struct {
         var status: StatusRegister = undefined;
         // Read the status register
         while (!(status.outputBuffer)) {
-            status = @bitCast(arch.inb(self.status_port));
+            status = @as(StatusRegister, @bitCast(arch.inb(self.status_port)));
         }
         self.status = status;
     }
@@ -145,9 +148,49 @@ pub const Ps2Driver = struct {
     }
 
     /// Read the configuration byte
+    pub fn readConfigByte(self: *Ps2Driver) ConfigurationByte {
+        self.writeCommand(@intFromEnum(ControllerCommand.READ_CONFIG));
+
+        // Wait for data and read it
+        const config_data = self.readData();
+
+        // Convert to configuration byte struct
+        const config: ConfigurationByte = @bitCast(config_data);
+        self.config = config;
+        return config;
+    }
+
+    /// Read the configuration byte
     pub fn readConfig(self: *Ps2Driver) void {
+        // Send command to read config
         self.writeCommand(ControllerCommand.READ_CONFIG);
         self.readStatus();
         self.config = @bitCast(self.status.outputBuffer);
+    }
+
+    /// Write the configuration byte
+    pub fn writeConfig(self: *Ps2Driver, config: ConfigurationByte) void {
+        // Update internal config
+        self.config = config;
+
+        // Send command to write config
+        self.writeCommand(@intFromEnum(ControllerCommand.WRITE_CONFIG));
+
+        // Send the config data
+        self.writeData(@bitCast(config));
+    }
+
+    /// Read data from the data port
+    pub fn readData(self: *Ps2Driver) u8 {
+        // Wait for controller output buffer to be full (data available)
+        self.readStatus();
+        return arch.inb(self.data_port);
+    }
+
+    /// Write data to the data port
+    pub fn writeData(self: *Ps2Driver, data: u8) void {
+        // Wait for controller input buffer to be empty (space available)
+        self.readStatus();
+        arch.outb(self.data_port, data);
     }
 };
