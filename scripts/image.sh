@@ -71,8 +71,9 @@ image() {
   sudo losetup -d "${LOOP_DEVICE2}"
 
   # Clean up
-  rm -rf "${boot_files_dir}"
-  rm -rf "${mount_point}"
+  # Ensure loop devices are detached before removing directories
+  sudo rm -rf "${mount_point}"
+  sudo rm -rf "${boot_files_dir}"
 
   # Set the ownership of the image file to the current user
   # TODO: This is a hack to get around the fact that the image file is created by root

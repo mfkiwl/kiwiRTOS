@@ -1,3 +1,7 @@
+# Like GNU `make`, but `just` rustier.
+# https://just.systems/
+# run `just` from this directory to see available commands
+
 alias r := run
 alias b := build
 alias i := image
@@ -6,6 +10,10 @@ alias db := debug
 alias ch := check
 alias f := format
 alias d := docs
+
+# Default command when 'just' is run without arguments
+default:
+  @just --list
 
 # Run a package with specified architecture
 # Usage: just run [arch=x86_64]
@@ -25,7 +33,7 @@ image arch='x86_64':
 # Debug the project
 # Usage: just debug [arch=x86_64]
 debug arch='x86_64':
-  zig build debug -Dtarget_arch={{arch}}
+  zig build debug -Doptimize=Debug -Dtarget_arch={{arch}}
 
 # Clean the project
 clean:

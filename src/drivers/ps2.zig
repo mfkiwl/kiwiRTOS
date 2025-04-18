@@ -12,9 +12,6 @@ pub const PS2_STATUS_PORT = arch.PS2_STATUS_PORT;
 /// PS/2 controller command port
 pub const PS2_COMMAND_PORT = arch.PS2_COMMAND_PORT;
 
-/// PS/2 controller status register
-pub const PS2_STATUS_REGISTER = StatusRegister;
-
 /// PS/2 controller commands
 pub const ControllerCommand = enum(u8) {
     pub const READ_CONFIG: u8 = 0x20;
@@ -26,16 +23,6 @@ pub const ControllerCommand = enum(u8) {
     pub const TEST_CONTROLLER: u8 = 0xAA;
     pub const TEST_PORT1: u8 = 0xAB;
     pub const TEST_PORT2: u8 = 0xA9;
-};
-
-/// PS/2 controller configuration bits
-pub const ControllerConfig = enum(u8) {
-    pub const PORT1_INT: u8 = 0x01;
-    pub const PORT2_INT: u8 = 0x02;
-    pub const SYSTEM_FLAG: u8 = 0x04;
-    pub const PORT1_CLK: u8 = 0x10;
-    pub const PORT2_CLK: u8 = 0x20;
-    pub const PORT1_TRANSLATION: u8 = 0x40;
 };
 
 /// PS/2 controller configuration byte
@@ -78,117 +65,104 @@ pub const StatusRegister = packed struct {
 
 /// PS/2 Controller Status Bits
 pub const StatusBits = enum(u8) {
-    pub const OUTPUT_FULL: u8 = 0x01;
-    pub const INPUT_FULL: u8 = 0x02;
+    pub const OUTPUT: u8 = 0x01;
+    pub const INPUT: u8 = 0x02;
 };
 
 /// PS/2 controller responses
-pub const Response = struct {
+pub const Response = enum(u8) {
     pub const ACK: u8 = 0xFA;
     pub const RESEND: u8 = 0xFE;
     pub const SELF_TEST_PASS: u8 = 0xAA;
     pub const PORT_TEST_PASS: u8 = 0x00;
 };
 
-/// Read a byte from an I/O port
-pub inline fn inb(port: u16) u8 {
-    return asm volatile ("inb %[port], %[result]"
-        : [result] "={al}" (-> u8),
-        : [port] "N{dx}" (port),
-    );
-}
+/// PS/2 controller driver
+pub const Ps2Driver = struct {
+    /// PS/2 controller data port (port-mapped)
+    data_port: u16,
+    /// PS/2 controller status port (port-mapped)
+    status_port: u16,
+    /// PS/2 controller command port (port-mapped)
+    command_port: u16,
 
-/// Write a byte to an I/O port
-pub inline fn outb(port: u16, value: u8) void {
-    asm volatile ("outb %[value], %[port]"
-        :
-        : [value] "{al}" (value),
-          [port] "N{dx}" (port),
-    );
-}
+    /// PS/2 controller configuration byte
+    config: ConfigurationByte,
+    /// PS/2 controller status register
+    status: StatusRegister,
 
-/// Read the status register
-pub fn readStatus() StatusRegister {
-    const value = inb(PS2_STATUS_PORT);
-    return @bitCast(value);
-}
+    /// Initialize a PS/2 controller driver
+    pub fn init(data_port: u16, status_port: u16, command_port: u16) Ps2Driver {
+        var driver: Ps2Driver = undefined;
+        driver = Ps2Driver{
+            .data_port = data_port,
+            .status_port = status_port,
+            .command_port = command_port,
+            .config = undefined,
+            .status = undefined,
+        };
 
-/// Wait for PS/2 controller to be ready for writing
-pub fn waitWrite() bool {
-    var timeout: u16 = 1000;
-    while (timeout > 0) : (timeout -= 1) {
-        const status = readStatus();
-        if (status.inputBuffer == 0) {
-            return true;
-        }
-        // Short delay
-        asm volatile ("pause");
+        // Disable devices connected to both PS/2 ports
+        driver.writeCommand(ControllerCommand.DISABLE_PORT1);
+        driver.writeCommand(ControllerCommand.DISABLE_PORT2);
+
+        // Read the PS/2 configuration byte
+
+
+        // // Flush the output buffer
+        // driver.flushOutputBuffer();
+
+        // // Read the PS/2 configuration byte (need current configuration to update)
+        // if (!driver.sendCommand(ControllerCommand.READ_CONFIG)) return null;
+        // const config = driver.readData() orelse return null;
+
+        // // Modify configuration: enable port 1 interrupt and clock, disable port 2
+        // const new_config = (config & ~(ControllerCommand.DISABLE_PORT2 | ControllerCommand.DISABLE_PORT2_CLK)) |
+        //     (ControllerCommand.ENABLE_PORT1 | ControllerCommand.ENABLE_PORT1_CLK);
+
+        // // Write the new configuration
+        // if (!driver.sendCommand(ControllerCommand.WRITE_CONFIG)) return false;
+        // if (!driver.sendData(new_config)) return false;
+
+        // // Enable PS/2 port 1
+        // if (!driver.sendCommand(ControllerCommand.ENABLE_PORT1)) return false;
+
+        return driver;
     }
-    return false;
-}
 
-/// Wait for PS/2 controller to have data available
-pub fn waitRead() bool {
-    var timeout: u16 = 1000;
-    while (timeout > 0) : (timeout -= 1) {
-        const status = readStatus();
-        if (status.outputBuffer == 1) {
-            return true;
+    /// Read the status register
+    pub fn readStatus(self: *Ps2Driver) void {
+        var status: StatusRegister = undefined;
+        // Read the status register
+        while (!(status.outputBuffer)) {
+            status = @bitCast(arch.inb(self.status_port));
         }
-        // Short delay
-        asm volatile ("pause");
+        self.status = status;
     }
-    return false;
-}
 
-/// Send a command to the PS/2 controller
-pub fn sendCommand(cmd: u8) bool {
-    if (!waitWrite()) return false;
-    outb(PS2_COMMAND_PORT, cmd);
-    return true;
-}
+    /// Write a controller command
+    pub fn writeCommand(self: *Ps2Driver, cmd: u8) void {
+        while (!(self.status.inputBuffer)) {
+            self.readStatus();
+        }
+        arch.outb(self.command_port, cmd);
+    }
 
-/// Send data to the PS/2 controller
-pub fn sendData(data: u8) bool {
-    if (!waitWrite()) return false;
-    outb(PS2_DATA_PORT, data);
-    return true;
-}
+    /// Send data to the PS/2 controller
+    pub fn sendData(self: *Ps2Driver, data: u8) bool {
+        if (!self.waitWrite()) return false;
+        arch.outb(self.data_port, data);
+        return true;
+    }
 
-/// Read data from the PS/2 controller
-pub fn readData() ?u8 {
-    if (!waitRead()) return null;
-    return inb(PS2_DATA_PORT);
-}
+    /// Read data from the PS/2 controller
+    pub fn readData(self: *Ps2Driver) ?u8 {
+        if (!self.waitRead()) return null;
+        return arch.inb(self.data_port);
+    }
 
-/// Flush the output buffer
-pub fn flushOutputBuffer() void {
-    _ = inb(PS2_DATA_PORT);
-}
-
-/// Initialize the PS/2 controller
-pub fn init() bool {
-    // Disable both PS/2 ports
-    if (!sendCommand(ControllerCommand.DISABLE_PORT1)) return false;
-    if (!sendCommand(ControllerCommand.DISABLE_PORT2)) return false;
-
-    // Flush the output buffer
-    flushOutputBuffer();
-
-    // Read the current configuration
-    if (!sendCommand(ControllerCommand.READ_CONFIG)) return false;
-    const config = readData() orelse return false;
-
-    // Modify configuration: enable port 1 interrupt and clock, disable port 2
-    const new_config = (config & ~(ControllerConfig.PORT2_INT | ControllerConfig.PORT2_CLK)) |
-        (ControllerConfig.PORT1_INT | ControllerConfig.PORT1_CLK);
-
-    // Write the new configuration
-    if (!sendCommand(ControllerCommand.WRITE_CONFIG)) return false;
-    if (!sendData(new_config)) return false;
-
-    // Enable PS/2 port 1
-    if (!sendCommand(ControllerCommand.ENABLE_PORT1)) return false;
-
-    return true;
-}
+    /// Flush the output buffer
+    pub fn flushOutputBuffer(self: *Ps2Driver) void {
+        _ = self.readData();
+    }
+};

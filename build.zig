@@ -180,13 +180,13 @@ pub fn build(b: *std.Build) anyerror!void {
 
     // Create the image with sudo
     const image_cmd = b.addSystemCommand(&.{
-        "sudo", "-E", "./scripts/image.sh", kernel_path, image_path, target_arch_str,
+        "sudo", "-E", "bash", "./scripts/image.sh", kernel_path, image_path, target_arch_str,
     });
     image_cmd.step.dependOn(&mv_cmd.step);
 
     // Get current user from environment variable
     const user = std.process.getEnvVarOwned(b.allocator, "USER") catch "ubuntu";
-    const chmod_cmd = b.addSystemCommand(&.{ "sudo", "chown", b.fmt("{s}:{s}", .{ user, user }), image_path });
+    const chmod_cmd = b.addSystemCommand(&.{ "sudo", "chown", user, image_path });
     chmod_cmd.step.dependOn(&image_cmd.step);
 
     // Set up QEMU command based on architecture

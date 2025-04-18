@@ -210,6 +210,11 @@ pub const VgaTextDriver = struct {
         self.writer().print(format, args) catch unreachable;
     }
 
+    /// Print a formatted string to the VGA buffer
+    pub fn printk(self: *VgaTextDriver, comptime format: []const u8, args: anytype) void {
+        self.writer().print(format, args) catch unreachable;
+    }
+
     /// Print a formatted string to the VGA buffer followed by a newline
     pub fn println(self: *VgaTextDriver, comptime format: []const u8, args: anytype) void {
         self.writer().print(format ++ "\n", args) catch unreachable;
