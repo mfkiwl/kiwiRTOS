@@ -14,15 +14,15 @@ pub const PS2_COMMAND_PORT = arch.PS2_COMMAND_PORT;
 
 /// PS/2 controller commands
 pub const ControllerCommand = enum(u8) {
-    pub const READ_CONFIG: u8 = 0x20;
-    pub const WRITE_CONFIG: u8 = 0x60;
-    pub const DISABLE_PORT1: u8 = 0xAD;
-    pub const DISABLE_PORT2: u8 = 0xA7;
-    pub const ENABLE_PORT1: u8 = 0xAE;
-    pub const ENABLE_PORT2: u8 = 0xA8;
-    pub const TEST_CONTROLLER: u8 = 0xAA;
-    pub const TEST_PORT1: u8 = 0xAB;
-    pub const TEST_PORT2: u8 = 0xA9;
+    READ_CONFIG = 0x20,
+    WRITE_CONFIG = 0x60,
+    DISABLE_PORT1 = 0xAD,
+    DISABLE_PORT2 = 0xA7,
+    ENABLE_PORT1 = 0xAE,
+    ENABLE_PORT2 = 0xA8,
+    TEST_CONTROLLER = 0xAA,
+    TEST_PORT1 = 0xAB,
+    TEST_PORT2 = 0xA9,
 };
 
 /// PS/2 controller configuration byte
@@ -127,45 +127,59 @@ pub const Ps2Driver = struct {
         return driver;
     }
 
-    /// Read the status register
-    pub fn readStatus(self: *Ps2Driver) void {
+    /// Wait for controller input buffer to be empty (ready for write)
+    pub fn waitForInput(self: *Ps2Driver) void {
         var status: StatusRegister = undefined;
-        // Read the status register
-        while (!(status.outputBuffer)) {
-            status = @as(StatusRegister, @bitCast(arch.inb(self.status_port)));
+        while (status.inputBuffer == 1) {
+            status = self.readStatus();
         }
         self.status = status;
     }
 
-    /// Write a controller command
-    pub fn writeCommand(self: *Ps2Driver, cmd: ControllerCommand) void {
-        while (!(self.status.inputBuffer)) {
-            // Wait for input buffer to be empty
-            self.readStatus();
+    /// Wait for controller output buffer to be full (data available)
+    pub fn waitForOutput(self: *Ps2Driver) void {
+        var status: StatusRegister = undefined;
+        while (status.outputBuffer == 0) {
+            status = self.readStatus();
         }
-        // Write the command to the command port
-        arch.outb(self.command_port, @intFromEnum(cmd));
+        self.status = status;
     }
 
-    /// Read the configuration byte
-    pub fn readConfigByte(self: *Ps2Driver) ConfigurationByte {
-        self.writeCommand(@intFromEnum(ControllerCommand.READ_CONFIG));
+    /// Read the status register
+    pub fn readStatus(self: *Ps2Driver) StatusRegister {
+        return @as(StatusRegister, @bitCast(arch.inb(self.status_port)));
+    }
 
-        // Wait for data and read it
-        const config_data = self.readData();
+    /// Read data from the data port
+    pub fn readData(self: *Ps2Driver) u8 {
+        // Wait for the output buffer to be full
+        self.waitForOutput();
+        // Read the data from the data port
+        return arch.inb(self.data_port);
+    }
 
-        // Convert to configuration byte struct
-        const config: ConfigurationByte = @bitCast(config_data);
-        self.config = config;
-        return config;
+    /// Write data to the data port
+    pub fn writeData(self: *Ps2Driver, data: u8) void {
+        // Wait for the input buffer to be empty
+        self.waitForInput();
+        // Write the data to the data port
+        arch.outb(self.data_port, data);
+    }
+
+    /// Write a controller command
+    pub fn writeCommand(self: *Ps2Driver, cmd: ControllerCommand) void {
+        // Wait for input buffer to be empty
+        self.waitForInput();
+        arch.outb(self.command_port, @intFromEnum(cmd));
     }
 
     /// Read the configuration byte
     pub fn readConfig(self: *Ps2Driver) void {
         // Send command to read config
+        // self.writeCommand(ControllerCommand.READ_CONFIG);
         self.writeCommand(ControllerCommand.READ_CONFIG);
-        self.readStatus();
-        self.config = @bitCast(self.status.outputBuffer);
+        // Read the config data
+        self.config = @bitCast(self.readData());
     }
 
     /// Write the configuration byte
@@ -174,23 +188,9 @@ pub const Ps2Driver = struct {
         self.config = config;
 
         // Send command to write config
-        self.writeCommand(@intFromEnum(ControllerCommand.WRITE_CONFIG));
+        self.writeCommand(ControllerCommand.WRITE_CONFIG);
 
         // Send the config data
         self.writeData(@bitCast(config));
-    }
-
-    /// Read data from the data port
-    pub fn readData(self: *Ps2Driver) u8 {
-        // Wait for controller output buffer to be full (data available)
-        self.readStatus();
-        return arch.inb(self.data_port);
-    }
-
-    /// Write data to the data port
-    pub fn writeData(self: *Ps2Driver, data: u8) void {
-        // Wait for controller input buffer to be empty (space available)
-        self.readStatus();
-        arch.outb(self.data_port, data);
     }
 };

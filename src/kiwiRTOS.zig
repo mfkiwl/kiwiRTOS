@@ -19,13 +19,13 @@ pub const lib = @import("lib/lib.zig");
 // This the trap/exception entrypoint, this will be invoked any time
 // we get an exception (e.g if something in the kernel goes wrong) or
 // an interrupt gets delivered.
-export fn trap() align(4) callconv(.C) noreturn {
+pub export fn trap() align(4) callconv(.C) noreturn {
     while (true) {}
 }
 
 // This is the kernel's entrypoint which will be invoked by the booting
 // CPU (aka hart) after the boot code has executed.
-export fn kmain() callconv(.C) noreturn {
+pub export fn kmain() callconv(.C) noreturn {
     main();
     // Halt the CPU if we ever return from main
     while (true) {}
@@ -36,6 +36,14 @@ pub fn main() void {
     var vga_text_driver: drivers.vga.VgaTextDriver = undefined;
     vga_text_driver = drivers.vga.VgaTextDriver.init(drivers.vga.VGA_TEXT_BUFFER);
     vga_text_driver.clear();
+
+    // Initialize PS/2 driver
+    var ps2_driver: drivers.ps2.Ps2Driver = undefined;
+    ps2_driver = drivers.ps2.Ps2Driver.init(
+        drivers.ps2.PS2_DATA_PORT,
+        drivers.ps2.PS2_STATUS_PORT,
+        drivers.ps2.PS2_COMMAND_PORT,
+    );
 
     // Print a welcome message
     vga_text_driver.setColor(drivers.vga.VgaTextColor.new(.WHITE, .BLACK));

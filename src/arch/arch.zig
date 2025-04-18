@@ -4,9 +4,9 @@ const builtin = @import("builtin");
 
 // Import the appropriate architecture-specific module
 const arch_impl = switch (builtin.cpu.arch) {
-    .x86_64 => @import("x86_64/arch.zig"),
-    .aarch64 => @import("arm/arch.zig"),
-    .riscv64, .riscv32 => @import("riscv/arch.zig"),
+    .x86_64 => @import("./x86_64/arch.zig"),
+    .aarch64 => @import("./arm/arch.zig"),
+    .riscv64, .riscv32 => @import("./riscv/arch.zig"),
     else => @compileError("Unsupported architecture"),
 };
 

@@ -36,7 +36,7 @@ A minimal Real-Time Operating System (RTOS) designed for embedded applications w
 ## Preview
 
 <p align="center">
-  <img src="assets/img/demo.mp4"
+  <img src="assets/img/demo.webm"
   width = "80%"
   alt = "Video demonstration"
   />

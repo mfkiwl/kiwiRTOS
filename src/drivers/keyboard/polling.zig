@@ -19,230 +19,129 @@ pub const KeyboardResponse = enum(u8) {
     pub const SELF_TEST_PASS: u8 = 0xAA;
 };
 
-// /// Wait for PS/2 controller to be ready for writing
-// fn ps2WaitWrite() void {
-//     var timeout: u16 = 1000;
-//     while (timeout > 0) : (timeout -= 1) {
-//         if ((inb(PS2_STATUS_PORT) & PS2_STATUS_INPUT_FULL) == 0) {
-//             return;
-//         }
-//         // Short delay
-//         asm volatile ("pause");
-//     }
-// }
+/// PS/2 keyboard scancode set
+pub const KeyboardScancodeSet = enum(u8) {
+    /// Scancode set 1 (default)
+    pub const SCANCODE_SET_1: u8 = 0x01;
+    /// Scancode set 2 (most common)
+    pub const SCANCODE_SET_2: u8 = 0x02;
+    /// Scancode set 3 (rare)
+    pub const SCANCODE_SET_3: u8 = 0x03;
+};
 
-// /// Wait for PS/2 controller to have data available
-// fn ps2WaitRead() bool {
-//     var timeout: u16 = 1000;
-//     while (timeout > 0) : (timeout -= 1) {
-//         if ((inb(PS2_STATUS_PORT) & PS2_STATUS_OUTPUT_FULL) != 0) {
-//             return true;
-//         }
-//         // Short delay
-//         asm volatile ("pause");
-//     }
-//     return false;
-// }
+pub const ScanCodeSet = union(enum) {
+    set1: void,
+    set2: void,
+    set3: void,
+};
 
-// /// Send a command to the PS/2 controller
-// fn ps2SendCommand(cmd: u8) void {
-//     ps2WaitWrite();
-//     outb(PS2_COMMAND_PORT, cmd);
-// }
+/// Keyboard driver
+pub const KeyboardDriver = struct {
+    ps2: *ps2.Ps2Driver,
 
-// /// Send data to the PS/2 controller
-// fn ps2SendData(data: u8) void {
-//     ps2WaitWrite();
-//     outb(PS2_DATA_PORT, data);
-// }
+    /// Initialize a keyboard driver
+    pub fn init(ps2_driver: *ps2.Ps2Driver) ?KeyboardDriver {
+        var driver: KeyboardDriver = undefined;
+        driver = KeyboardDriver{
+            .ps2 = ps2_driver,
+        };
 
-// /// Read data from the PS/2
-// fn ps2ReadData() u8 {
-//     _ = ps2WaitRead();
-//     return inb(PS2_DATA_PORT);
-// }
+        // Reset the keyboard
+        if (!driver.sendCommand(KeyboardCommand.KB_CMD_RESET)) {
+            // printk("Keyboard reset failed\n");
+            return null;
+        }
 
-// /// Send a command to the keyboard
-// fn kbSendCommand(cmd: u8) bool {
-//     var retries: u8 = 3;
-//     while (retries > 0) : (retries -= 1) {
-//         ps2SendData(cmd);
+        // Wait for self-test response
+        if (driver.ps2.readData() != KeyboardResponse.SELF_TEST_PASS) {
+            // printk("Keyboard self-test failed\n");
+            return null;
+        }
 
-//         if (ps2WaitRead()) {
-//             const response = ps2ReadData();
-//             if (response == KB_RESP_ACK) {
-//                 return true;
-//             } else if (response == KB_RESP_RESEND) {
-//                 continue;
-//             }
-//         }
-//     }
-//     return false;
-// }
+        // Set scan code set 2 (most common)
+        if (!driver.sendCommandWithParam(KeyboardCommand.KB_CMD_SET_SCANCODE, KeyboardScancodeSet.SCANCODE_SET_2)) {
+            // printk("Setting scan code set failed\n");
+            return null;
+        }
 
-// /// Send a command with a parameter to the keyboard
-// fn kbSendCommandWithParam(cmd: u8, param: u8) bool {
-//     var retries: u8 = 3;
-//     while (retries > 0) : (retries -= 1) {
-//         ps2SendData(cmd);
+        // Enable keyboard
+        if (!driver.sendCommand(KeyboardCommand.KB_CMD_ENABLE)) {
+            // printk("Enabling keyboard failed\n");
+            return null;
+        }
+        return driver;
+    }
 
-//         if (ps2WaitRead()) {
-//             const response = ps2ReadData();
-//             if (response == KB_RESP_ACK) {
-//                 ps2SendData(param);
-//                 if (ps2WaitRead()) {
-//                     const param_response = ps2ReadData();
-//                     if (param_response == KB_RESP_ACK) {
-//                         return true;
-//                     }
-//                 }
-//                 break;
-//             } else if (response == KB_RESP_RESEND) {
-//                 continue;
-//             }
-//         }
-//     }
-//     return false;
-// }
+    /// Send a command to the keyboard
+    pub fn sendCommand(self: *KeyboardDriver, cmd: KeyboardCommand) bool {
+        // TODO: Handle RESEND
+        var response: KeyboardResponse = undefined;
+        while (response != KeyboardResponse.ACK) {
+            self.ps2.writeCommand(cmd);
+            response = @enumFromInt(self.ps2.readData());
+        }
+        return response == KeyboardResponse.ACK;
+    }
 
-// /// Initialize the PS/2 controller
-// pub fn initController() bool {
-//     // Disable both PS/2 ports
-//     ps2SendCommand(PS2_CMD_DISABLE_PORT1);
-//     ps2SendCommand(PS2_CMD_DISABLE_PORT2);
+    /// Send a command with a parameter to the keyboard
+    fn sendCommandWithParam(self: *KeyboardDriver, cmd: KeyboardCommand, param: u8) bool {
+        var response: KeyboardResponse = undefined;
+        while (true) {
+            self.ps2.writeCommand(cmd);
+            response = @enumFromInt(self.ps2.readData());
+            if (response == KeyboardResponse.ACK) {
+                self.ps2.writeData(param);
+                response = @enumFromInt(self.ps2.readData());
+                if (response == KeyboardResponse.ACK) {
+                    return true;
+                }
+            }
+        }
+        return response == KeyboardResponse.ACK;
+    }
 
-//     // Flush the output buffer
-//     _ = inb(PS2_DATA_PORT);
+    /// Read a key from the keyboard (returns raw scan code)
+    pub fn readScanCode(self: *KeyboardDriver) u8 {
+        return self.ps2.readData();
+    }
 
-//     // Read the current configuration
-//     ps2SendCommand(PS2_CMD_READ_CONFIG);
-//     const config = ps2ReadData();
+    /// Poll the keyboard until a key is pressed and return its ASCII value
+    pub fn readKey(self: *KeyboardDriver) u8 {
+        while (true) {
+            if (self.readScanCode()) |code| {
+                // Skip release codes (0xF0 prefix in scan code set 2)
+                if (code == 0xF0) {
+                    _ = self.readScanCode(); // Consume the next byte (the actual key that was released)
+                    continue;
+                }
 
-//     // Modify configuration: enable port 1 interrupt and clock, disable port 2
-//     const new_config = (config & ~(PS2_CONFIG_PORT2_INT | PS2_CONFIG_PORT2_CLK)) |
-//         (PS2_CONFIG_PORT1_INT | PS2_CONFIG_PORT1_CLK);
+                return self.mapScanCodeToAscii(code);
+            }
+        }
+    }
 
-//     // Write the new configuration
-//     ps2SendCommand(PS2_CMD_WRITE_CONFIG);
-//     ps2SendData(new_config);
+    // Simple scancode set 2 to ASCII mapping for common keys
+    // This is a simplified mapping for common keys only
+    fn mapScanCodeToAscii(scan_code: u8) ?u8 {
+        const ascii_table = [_]?u8{
+            // 0x00-0x0F
+            null, null, null, null, null, null, null, null, null, null, null, null, null, '\t', '`',  null,
+            // 0x10-0x1F
+            null, null, null, null, null, 'q',  '1',  null, null, null, 'z',  's',  'a',  'w',  '2',  null,
+            // 0x20-0x2F
+            null, 'c',  'x',  'd',  'e',  '4',  '3',  null, null, ' ',  'v',  'f',  't',  'r',  '5',  null,
+            // 0x30-0x3F
+            null, 'n',  'b',  'h',  'g',  'y',  '6',  null, null, null, 'm',  'j',  'u',  '7',  '8',  null,
+            // 0x40-0x4F
+            null, ',',  'k',  'i',  'o',  '0',  '9',  null, null, '.',  '/',  'l',  ';',  'p',  '-',  null,
+            // 0x50-0x5F
+            null, null, '\'', null, '[',  '=',  null, null, null, null, '\n', ']',  null, '\\', null, null,
+        };
 
-//     // Enable PS/2 port 1
-//     ps2SendCommand(PS2_CMD_ENABLE_PORT1);
+        if (scan_code < ascii_table.len) {
+            return ascii_table[scan_code];
+        }
 
-//     return true;
-// }
-
-// /// Initialize the keyboard
-// pub fn initKeyboard() bool {
-//     // Reset the keyboard
-//     if (!kbSendCommand(KB_CMD_RESET)) {
-//         printk("Keyboard reset failed\n");
-//         return false;
-//     }
-
-//     // Wait for self-test response
-//     if (ps2WaitRead()) {
-//         const self_test = ps2ReadData();
-//         if (self_test != KB_RESP_SELF_TEST_PASS) {
-//             printk("Keyboard self-test failed\n");
-//             return false;
-//         }
-//     } else {
-//         printk("Keyboard self-test timeout\n");
-//         return false;
-//     }
-
-//     // Set scan code set 2 (most common)
-//     if (!kbSendCommandWithParam(KB_CMD_SET_SCANCODE, 2)) {
-//         printk("Setting scan code set failed\n");
-//         return false;
-//     }
-
-//     // Enable keyboard
-//     if (!kbSendCommand(KB_CMD_ENABLE)) {
-//         printk("Enabling keyboard failed\n");
-//         return false;
-//     }
-
-//     return true;
-// }
-
-// /// Initialize the keyboard driver
-// pub fn init() bool {
-//     const controller_ok = initController();
-//     if (!controller_ok) {
-//         printk("PS/2 controller initialization failed\n");
-//         return false;
-//     }
-
-//     const keyboard_ok = initKeyboard();
-//     if (!keyboard_ok) {
-//         printk("Keyboard initialization failed\n");
-//         return false;
-//     }
-
-//     printk("Keyboard initialized successfully\n");
-//     return true;
-// }
-
-// /// Check if a key is available to read
-// pub fn isKeyAvailable() bool {
-//     return (inb(PS2_STATUS_PORT) & PS2_STATUS_OUTPUT_FULL) != 0;
-// }
-
-// /// Read a key from the keyboard (returns raw scan code)
-// pub fn readScanCode() ?u8 {
-//     if (isKeyAvailable()) {
-//         return inb(PS2_DATA_PORT);
-//     }
-//     return null;
-// }
-
-// // Simple scancode set 2 to ASCII mapping for common keys
-// // This is a simplified mapping for common keys only
-// fn mapScanCodeToAscii(scan_code: u8) ?u8 {
-//     const ascii_table = [_]?u8{
-//         // 0x00-0x0F
-//         null, null, null, null, null, null, null, null, null, null, null, null, null, '\t', '`',  null,
-//         // 0x10-0x1F
-//         null, null, null, null, null, 'q',  '1',  null, null, null, 'z',  's',  'a',  'w',  '2',  null,
-//         // 0x20-0x2F
-//         null, 'c',  'x',  'd',  'e',  '4',  '3',  null, null, ' ',  'v',  'f',  't',  'r',  '5',  null,
-//         // 0x30-0x3F
-//         null, 'n',  'b',  'h',  'g',  'y',  '6',  null, null, null, 'm',  'j',  'u',  '7',  '8',  null,
-//         // 0x40-0x4F
-//         null, ',',  'k',  'i',  'o',  '0',  '9',  null, null, '.',  '/',  'l',  ';',  'p',  '-',  null,
-//         // 0x50-0x5F
-//         null, null, '\'', null, '[',  '=',  null, null, null, null, '\n', ']',  null, '\\', null, null,
-//     };
-
-//     if (scan_code < ascii_table.len) {
-//         return ascii_table[scan_code];
-//     }
-
-//     return null;
-// }
-
-// /// Read a key and return its ASCII representation
-// pub fn readKey() ?u8 {
-//     if (readScanCode()) |code| {
-//         // Skip release codes (0xF0 prefix in scan code set 2)
-//         if (code == 0xF0) {
-//             _ = readScanCode(); // Consume the next byte (the actual key that was released)
-//             return null;
-//         }
-
-//         return mapScanCodeToAscii(code);
-//     }
-
-//     return null;
-// }
-
-// /// Poll the keyboard until a key is pressed and return its ASCII value
-// pub fn getChar() u8 {
-//     while (true) {
-//         if (readKey()) |c| {
-//             return c;
-//         }
-//     }
-// }
+        return null;
+    }
+};
