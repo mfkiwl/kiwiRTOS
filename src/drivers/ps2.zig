@@ -53,9 +53,9 @@ pub const StatusRegister = packed struct {
     systemFlag: u1,
     /// Command/data flag (0 = data for PS/2 device, 1 = for PS/2 command)
     commandData: u1,
-    /// Chipset specific, possibly keyboard lock
-    unknown: u1,
-    /// Chip specific, possibly receive time-out or second port
+    /// Unknown/chipset-specific, possibly keyboard lock
+    unknown1: u1,
+    /// Unknown/chipset-specific, possibly receive time-out or second port
     unknown2: u1,
     /// Time-out error (0 = no error, 1 = error)
     timeoutError: u1,
@@ -107,26 +107,20 @@ pub const Ps2Driver = struct {
         driver.writeCommand(ControllerCommand.DISABLE_PORT2);
 
         // Read the PS/2 configuration byte
+        driver.readConfig();
 
+        // TODO: Ask the order in which I should enable the clock and interrupts on both PS/2 ports
 
-        // // Flush the output buffer
-        // driver.flushOutputBuffer();
+        // Enable the clock interrupts on both PS/2 ports
+        driver.writeCommand(ControllerCommand.ENABLE_PORT1_CLK);
+        // driver.writeCommand(ControllerCommand.ENABLE_PORT1);
+        driver.writeCommand(ControllerCommand.ENABLE_PORT2_CLK);
+        // driver.writeCommand(ControllerCommand.ENABLE_PORT2);
 
-        // // Read the PS/2 configuration byte (need current configuration to update)
-        // if (!driver.sendCommand(ControllerCommand.READ_CONFIG)) return null;
-        // const config = driver.readData() orelse return null;
-
-        // // Modify configuration: enable port 1 interrupt and clock, disable port 2
-        // const new_config = (config & ~(ControllerCommand.DISABLE_PORT2 | ControllerCommand.DISABLE_PORT2_CLK)) |
-        //     (ControllerCommand.ENABLE_PORT1 | ControllerCommand.ENABLE_PORT1_CLK);
-
-        // // Write the new configuration
-        // if (!driver.sendCommand(ControllerCommand.WRITE_CONFIG)) return false;
-        // if (!driver.sendData(new_config)) return false;
-
-        // // Enable PS/2 port 1
-        // if (!driver.sendCommand(ControllerCommand.ENABLE_PORT1)) return false;
-
+        // Write the configuration byte back out to the PS/2 controller. This is a two
+        // step process that involves polling the status register until the output buffer is empty.
+        driver.writeCommand(ControllerCommand.WRITE_CONFIG);
+        driver.writeCommand(driver.config);
         return driver;
     }
 
@@ -141,28 +135,19 @@ pub const Ps2Driver = struct {
     }
 
     /// Write a controller command
-    pub fn writeCommand(self: *Ps2Driver, cmd: u8) void {
+    pub fn writeCommand(self: *Ps2Driver, cmd: ControllerCommand) void {
         while (!(self.status.inputBuffer)) {
+            // Wait for input buffer to be empty
             self.readStatus();
         }
-        arch.outb(self.command_port, cmd);
+        // Write the command to the command port
+        arch.outb(self.command_port, @intFromEnum(cmd));
     }
 
-    /// Send data to the PS/2 controller
-    pub fn sendData(self: *Ps2Driver, data: u8) bool {
-        if (!self.waitWrite()) return false;
-        arch.outb(self.data_port, data);
-        return true;
-    }
-
-    /// Read data from the PS/2 controller
-    pub fn readData(self: *Ps2Driver) ?u8 {
-        if (!self.waitRead()) return null;
-        return arch.inb(self.data_port);
-    }
-
-    /// Flush the output buffer
-    pub fn flushOutputBuffer(self: *Ps2Driver) void {
-        _ = self.readData();
+    /// Read the configuration byte
+    pub fn readConfig(self: *Ps2Driver) void {
+        self.writeCommand(ControllerCommand.READ_CONFIG);
+        self.readStatus();
+        self.config = @bitCast(self.status.outputBuffer);
     }
 };

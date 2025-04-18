@@ -67,6 +67,8 @@ pub const VgaTextEntry = struct {
     }
 };
 
+// TODO: VGA driver currently uses port I/O because it uses inb and outb
+// It should use the offsets of a buffer address
 /// VGA text mode driver
 pub const VgaTextDriver = struct {
     /// Pointer to VGA buffer (memory-mapped)
