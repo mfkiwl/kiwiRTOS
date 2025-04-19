@@ -55,8 +55,7 @@ pub const UartDriver = struct {
 
     /// Initialize a new UART driver
     pub fn init(buffer_addr: usize, baud_rate: u32) UartDriver {
-        var driver: UartDriver = undefined;
-        driver = UartDriver{
+        var driver: UartDriver = UartDriver{
             .buffer = @ptrFromInt(buffer_addr),
             .baud_rate = baud_rate,
             .data_bits = 8,

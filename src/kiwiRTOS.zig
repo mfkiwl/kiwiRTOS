@@ -37,14 +37,6 @@ pub fn main() void {
     vga_text_driver = drivers.vga.VgaTextDriver.init(drivers.vga.VGA_TEXT_BUFFER);
     vga_text_driver.clear();
 
-    // Initialize PS/2 driver
-    var ps2_driver: drivers.ps2.Ps2Driver = undefined;
-    ps2_driver = drivers.ps2.Ps2Driver.init(
-        drivers.ps2.PS2_DATA_PORT,
-        drivers.ps2.PS2_STATUS_PORT,
-        drivers.ps2.PS2_COMMAND_PORT,
-    );
-
     // Print a welcome message
     vga_text_driver.setColor(drivers.vga.VgaTextColor.new(.WHITE, .BLACK));
     vga_text_driver.putStr("KiwiRTOS VGA Text Driver Demo\n");
@@ -84,4 +76,27 @@ pub fn main() void {
     // vga_text_driver.println("{qd}", .{std.math.minInt(i64)}); // -9223372036854775808
     // vga_text_driver.println("{qd}", .{std.math.maxInt(i64)}); // 9223372036854775807
     // vga_text_driver.println("{qu}", .{std.math.maxInt(u64)}); // 18446744073709551615
+
+    // Initialize PS/2 driver
+    var ps2_driver: drivers.ps2.Ps2Driver = undefined;
+    ps2_driver = drivers.ps2.Ps2Driver.init(
+        drivers.ps2.PS2_DATA_PORT,
+        drivers.ps2.PS2_STATUS_PORT,
+        drivers.ps2.PS2_COMMAND_PORT,
+    );
+
+    // Initialize keyboard driver
+    var keyboard_driver: ?drivers.keyboard.KeyboardDriver = undefined;
+    keyboard_driver = drivers.keyboard.KeyboardDriver.init(&ps2_driver, &vga_text_driver);
+
+    if (keyboard_driver != null) {
+        while (true) {
+            // vga_text_driver.printk("{c}", .{keyboard_driver.?.getChar()});
+            vga_text_driver.println("Got scan code: 0x{x:0>2}", .{keyboard_driver.?.getChar()});
+        }
+    } else {
+        // Handle initialization failure
+        vga_text_driver.println("Keyboard initialization failed!", .{});
+        while (true) {}
+    }
 }

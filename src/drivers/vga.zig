@@ -45,6 +45,7 @@ pub const VgaTextColorCode = enum(u8) {
 
 /// Represents a VGA text color
 pub const VgaTextColor = struct {
+    /// The color code (includes foreground and background colors)
     code: u8,
 
     /// Create a new VGA text color from foreground and background colors
@@ -90,8 +91,7 @@ pub const VgaTextDriver = struct {
         arch.outb(VGA_CRTC_INDEX, 0x0B);
         arch.outb(VGA_CRTC_DATA, (arch.inb(VGA_CRTC_DATA) & 0xE0) | 15);
 
-        var driver: VgaTextDriver = undefined;
-        driver = VgaTextDriver{
+        var driver: VgaTextDriver = VgaTextDriver{
             .buffer = @ptrFromInt(buffer_addr),
             .row = 0,
             .column = 0,

@@ -95,8 +95,7 @@ pub const Ps2Driver = struct {
 
     /// Initialize a PS/2 controller driver
     pub fn init(data_port: u16, status_port: u16, command_port: u16) Ps2Driver {
-        var driver: Ps2Driver = undefined;
-        driver = Ps2Driver{
+        var driver: Ps2Driver = Ps2Driver{
             .data_port = data_port,
             .status_port = status_port,
             .command_port = command_port,
