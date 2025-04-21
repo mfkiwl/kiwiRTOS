@@ -18,9 +18,13 @@ pub const VGA_TEXT_SIZE = VGA_TEXT_WIDTH * VGA_TEXT_HEIGHT;
 pub const VGA_TEXT_BUFFER = arch.VGA_TEXT_BUFFER;
 
 /// VGA I/O ports
+/// VGA CRTC index port
 const VGA_CRTC_INDEX = 0x3D4;
+/// VGA CRTC data port
 const VGA_CRTC_DATA = 0x3D5;
+/// VGA cursor high byte port
 const VGA_CURSOR_HIGH = 0x0E;
+/// VGA cursor low byte port
 const VGA_CURSOR_LOW = 0x0F;
 
 /// VGA text mode colors
@@ -88,6 +92,7 @@ pub const VgaTextDriver = struct {
         arch.outb(VGA_CRTC_INDEX, 0x0A);
         arch.outb(VGA_CRTC_DATA, (arch.inb(VGA_CRTC_DATA) & 0xC0) | 0);
 
+        // Enable blinking
         arch.outb(VGA_CRTC_INDEX, 0x0B);
         arch.outb(VGA_CRTC_DATA, (arch.inb(VGA_CRTC_DATA) & 0xE0) | 15);
 
