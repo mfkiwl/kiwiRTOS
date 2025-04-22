@@ -18,8 +18,26 @@ const KeyMap = struct {
 /// - Extended scancodes: 0xE0XX (where XX is the second byte)
 /// Represents a scancode set
 pub const ScanCodeSet = struct {
-    /// The set of scancodes
+    /// The scancode lookup table
     set: std.StaticStringMap(KeyMap),
+    /// The extended scancode
+    extended: ?u16,
+    /// The release scancode
+    release: ?u16,
+    /// The left shift scancode
+    left_shift: ?u16,
+    /// The right shift scancode
+    right_shift: ?u16,
+    /// The left ctrl scancode
+    left_ctrl: ?u16,
+    /// The right ctrl scancode
+    right_ctrl: ?u16,
+    /// The left alt scancode
+    left_alt: ?u16,
+    /// The right alt scancode
+    right_alt: ?u16,
+    /// The caps lock scancode
+    caps_lock: ?u16,
 
     /// Converts a scancode to its corresponding character
     pub fn getChar(self: ScanCodeSet, scancode: []const u8, shifted: bool) ?u8 {
@@ -119,6 +137,15 @@ pub const ScanCodeSet1: ScanCodeSet = .{
         .{ "E052", KeyMap{ .base = 0x15, .shifted = 0x15 } }, // Insert (custom code)
         .{ "E053", KeyMap{ .base = 0x7F, .shifted = 0x7F } }, // Delete (DEL character)
     }),
+    .extended = 0xE0,
+    .release = 0xF0,
+    .left_shift = 0x12,
+    .right_shift = 0x59,
+    .left_ctrl = 0x14,
+    .right_ctrl = 0x14,
+    .left_alt = 0x11,
+    .right_alt = 0x11,
+    .caps_lock = 0x58,
 };
 
 /// Scancode set 2 (most common) for a "US QWERTY" keyboard
@@ -224,6 +251,15 @@ pub const ScanCodeSet2: ScanCodeSet = .{
         .{ "E07D", KeyMap{ .base = 0x19, .shifted = 0x19 } }, // Page Up
         .{ "E07A", KeyMap{ .base = 0x1E, .shifted = 0x1E } }, // Page Down
     }),
+    .extended = 0xE0,
+    .release = 0xF0,
+    .left_shift = 0x12,
+    .right_shift = 0x59,
+    .left_ctrl = 0x14,
+    .right_ctrl = 0x14,
+    .left_alt = 0x11,
+    .right_alt = 0x11,
+    .caps_lock = 0x58,
 };
 
 /// Scancode set 3 (rare) for a "US QWERTY" keyboard
@@ -231,6 +267,12 @@ pub const ScanCodeSet3: ScanCodeSet = .{
     .set = std.StaticStringMap(KeyMap).initComptime(.{
         .{ "02", KeyMap{ .base = '1', .shifted = '!' } },
     }),
+    .extended = 0xE0,
+    .release = 0xF0,
+    .left_shift = 0x12,
+    .right_shift = 0x59,
+    .left_ctrl = 0x14,
+    .right_ctrl = 0x14,
 };
 
 /// Represents the set of supported scancodes
@@ -250,223 +292,4 @@ pub const ScanCodeSets = enum(u8) {
             .SCANCODE_SET_3 => ScanCodeSet3,
         };
     }
-
-    /// Get the extended scancode for the respective scancode set
-    pub fn extended(self: ScanCodeSets) u8 {
-        return switch (self) {
-            .SCANCODE_SET_1 => 0xE0,
-            .SCANCODE_SET_2 => 0xE0,
-            .SCANCODE_SET_3 => 0xE0,
-        };
-    }
-
-    /// Get the release scancode for the respective scancode set
-    pub fn release(self: ScanCodeSets) u8 {
-        return switch (self) {
-            .SCANCODE_SET_1 => 0xF0,
-            .SCANCODE_SET_2 => 0xF0,
-            .SCANCODE_SET_3 => 0xF0,
-        };
-    }
-
-    /// Get the left shift scancode for the respective scancode set
-    pub fn leftShift(self: ScanCodeSets) u8 {
-        return switch (self) {
-            .SCANCODE_SET_1 => 0x2A,
-        };
-    }
-
-    /// Get the right shift scancode for the respective scancode set
-    pub fn rightShift(self: ScanCodeSets) u8 {
-        return switch (self) {
-            .SCANCODE_SET_1 => 0x36,
-        };
-    }
-
-    /// Get the left ctrl scancode for the respective scancode set
-    pub fn leftCtrl(self: ScanCodeSets) u8 {
-        return switch (self) {
-            .SCANCODE_SET_1 => 0x1D,
-        };
-    }
-
-    /// Get the right ctrl scancode for the respective scancode set
-    pub fn rightCtrl(self: ScanCodeSets) u8 {
-        return switch (self) {
-            .SCANCODE_SET_1 => 0xE01D,
-        };
-    }
-
-    /// Get the left alt scancode for the respective scancode set
-    pub fn leftAlt(self: ScanCodeSets) u8 {
-        return switch (self) {
-            .SCANCODE_SET_1 => 0x38,
-        };
-    }
-
-    /// Get the right alt scancode for the respective scancode set
-    pub fn rightAlt(self: ScanCodeSets) u8 {
-        return switch (self) {
-            .SCANCODE_SET_1 => 0xE038,
-        };
-    }
-
-    /// Get the caps lock scancode for the respective scancode set
-    pub fn capsLock(self: ScanCodeSets) u8 {
-        return switch (self) {
-            .SCANCODE_SET_1 => 0x3A,
-        };
-    }
 };
-
-// /// Keyboard state tracker
-// pub const KeyboardState = struct {
-//     extended_code: bool = false,
-//     release_code: bool = false,
-
-//     shift_pressed: bool = false,
-//     ctrl_pressed: bool = false,
-//     alt_pressed: bool = false,
-//     caps_lock_active: bool = false,
-
-//     // Buffer for multi-byte scancodes
-//     scancode_buffer: u16 = 0,
-//     buffer_index: u8 = 0,
-
-//     /// Processes a single scancode byte
-//     pub fn processByte(self: *KeyboardState, byte: u8) ?u8 {
-//         // Handle special codes
-//         if (byte == ScanCode.EXTENDED) {
-//             self.extended_code = true;
-//             self.scancode_buffer = byte;
-//             self.buffer_index = 1;
-//             return null;
-//         }
-
-//         if (byte == ScanCode.RELEASE) {
-//             self.release_code = true;
-
-//             // If we're in extended mode, update the buffer
-//             if (self.extended_code) {
-//                 self.scancode_buffer = (self.scancode_buffer << 8) | byte;
-//                 self.buffer_index += 1;
-//             }
-
-//             return null;
-//         }
-
-//         var scancode: u16 = byte;
-
-//         // Combine with extended prefix if needed
-//         if (self.extended_code) {
-//             scancode = (self.scancode_buffer << 8) | byte;
-//             self.buffer_index += 1;
-//         }
-
-//         // Handle key release events
-//         if (self.release_code) {
-//             // Update modifier state
-//             switch (scancode) {
-//                 ScanCode.LEFT_SHIFT, ScanCode.RIGHT_SHIFT => self.shift_pressed = false,
-//                 ScanCode.LEFT_CTRL => self.ctrl_pressed = false,
-//                 ScanCode.RIGHT_CTRL => self.ctrl_pressed = false,
-//                 ScanCode.LEFT_ALT => self.alt_pressed = false,
-//                 ScanCode.RIGHT_ALT => self.alt_pressed = false,
-//                 else => {},
-//             }
-
-//             // Reset state for next scancode
-//             self.release_code = false;
-//             self.extended_code = false;
-//             self.scancode_buffer = 0;
-//             self.buffer_index = 0;
-
-//             return null;
-//         }
-
-//         // Handle key press events
-//         // Update modifier state
-//         switch (scancode) {
-//             ScanCode.LEFT_SHIFT, ScanCode.RIGHT_SHIFT => {
-//                 self.shift_pressed = true;
-//                 self.reset();
-//                 return null;
-//             },
-//             ScanCode.LEFT_CTRL, ScanCode.RIGHT_CTRL => {
-//                 self.ctrl_pressed = true;
-//                 self.reset();
-//                 return null;
-//             },
-//             ScanCode.LEFT_ALT, ScanCode.RIGHT_ALT => {
-//                 self.alt_pressed = true;
-//                 self.reset();
-//                 return null;
-//             },
-//             ScanCode.CAPS_LOCK => {
-//                 self.caps_lock_active = !self.caps_lock_active;
-//                 self.reset();
-//                 return null;
-//             },
-//             else => {},
-//         }
-
-//         // Get the character based on the full scancode
-//         const result = self.getCharFromScancode(scancode);
-
-//         // Reset state for next scancode
-//         self.reset();
-
-//         return result;
-//     }
-
-//     /// Convert scancode to hex string for lookup
-//     fn scancodeToHexString(scancode: u16) ![5]u8 {
-//         var buf: [5]u8 = undefined;
-
-//         if (scancode <= 0xFF) {
-//             // Single byte scancode
-//             _ = try std.fmt.bufPrint(&buf, "{X:0>2}", .{scancode});
-//             return buf;
-//         } else {
-//             // Extended scancode (E0 + byte)
-//             _ = try std.fmt.bufPrint(&buf, "{X:0>4}", .{scancode});
-//             return buf;
-//         }
-//     }
-
-//     /// Get the character value from a scancode
-//     fn getCharFromScancode(self: *KeyboardState, scancode: u16) ?u8 {
-//         // Convert scancode to string for map lookup
-//         var scancode_str: [5]u8 = undefined;
-//         scancode_str = scancodeToHexString(scancode) catch return null;
-
-//         // Use the appropriate lookup table based on scancode type
-//         const key_map_opt = ScanCodeSet1.set.get(&scancode_str);
-//         if (key_map_opt) |key_map| {
-//             // Determine if we should use shifted value
-//             // XOR with caps lock for letters
-//             const use_shift = blk: {
-//                 if (self.shift_pressed != self.caps_lock_active) {
-//                     // For letters, shift is toggled by caps lock
-//                     const char = if (self.shift_pressed) key_map.shifted else key_map.base;
-//                     if ((char >= 'a' and char <= 'z') or (char >= 'A' and char <= 'Z')) {
-//                         break :blk true;
-//                     }
-//                 }
-//                 break :blk self.shift_pressed;
-//             };
-
-//             return if (use_shift) key_map.shifted else key_map.base;
-//         }
-
-//         return null;
-//     }
-
-//     /// Reset the temporary state variables
-//     fn reset(self: *KeyboardState) void {
-//         self.extended_code = false;
-//         self.release_code = false;
-//         self.scancode_buffer = 0;
-//         self.buffer_index = 0;
-//     }
-// };

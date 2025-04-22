@@ -24,6 +24,11 @@ pub const KeyboardResponse = enum(u8) {
     SELF_TEST_PASS = 0xAA,
 };
 
+pub const KeyboardChar = struct {
+    byte: u8,
+    char: ?u8,
+};
+
 /// PS/2 keyboard LED command parameters
 pub const KeyboardLED = packed struct {
     scroll_lock: u1,
@@ -38,7 +43,7 @@ pub const KeyboardDriver = struct {
     /// The VGA driver
     console: *vga.VgaTextDriver,
     /// The scancode set
-    scancode_set: sc.ScanCodeSets,
+    scancode_set: sc.ScanCodeSet,
     /// The LED state
     led_state: KeyboardLED,
     /// Whether the extended code is active
@@ -64,7 +69,7 @@ pub const KeyboardDriver = struct {
         var driver = KeyboardDriver{
             .ps2 = ps2_driver,
             .console = vga_driver,
-            .scancode_set = .SCANCODE_SET_2,
+            .scancode_set = sc.ScanCodeSet2,
             .led_state = KeyboardLED{
                 .scroll_lock = 0,
                 .num_lock = 0,
@@ -109,7 +114,7 @@ pub const KeyboardDriver = struct {
 
     /// Set the scancode set
     pub fn setScanCodeSet(self: *KeyboardDriver, scancode_set: sc.ScanCodeSets) void {
-        self.scancode_set = scancode_set;
+        self.scancode_set = scancode_set.getScanCodeSet();
     }
 
     /// Reset the temporary state variables
@@ -162,38 +167,30 @@ pub const KeyboardDriver = struct {
     }
 
     /// Poll the keyboard until a key is pressed and return its ASCII value
-    pub fn getChar(self: *KeyboardDriver) u8 {
-        while (true) {
-            const code = self.readScanCode();
-            // Skip release codes (0xF0 prefix in scan code set 2)
-            if (code == 0xF0) {
-                _ = self.readScanCode(); // Consume the next byte (the actual key that was released)
-                continue;
-            } else {
-                return self.mapScanCodeToAscii(code);
-            }
-        }
+    pub fn getChar(self: *KeyboardDriver) KeyboardChar {
+        const byte: u8 = self.readScanCode();
+        return KeyboardChar{ .byte = byte, .char = self.processByte(byte) };
     }
 
     /// Processes a single scancode byte
-    pub fn processScanCode(self: *KeyboardDriver, byte: u8) ?u8 {
+    pub fn processByte(self: *KeyboardDriver, byte: u8) ?u8 {
         // Handle special codes
-        if (byte == sc.ScanCode.extended(self.scancode_set)) {
+        if (byte == self.scancode_set.extended) {
             self.extended_code = true;
             self.scancode_buffer = byte;
             self.buffer_index = 1;
+            self.console.println("Extended code", .{});
             return null;
         }
-
-        if (byte == sc.ScanCode.release(self.scancode_set)) {
+        // Skip release codes
+        if (byte == self.scancode_set.release) {
             self.release_code = true;
-
+            self.console.println("Release code", .{});
             // If we're in extended mode, update the buffer
             if (self.extended_code) {
                 self.scancode_buffer = (self.scancode_buffer << 8) | byte;
                 self.buffer_index += 1;
             }
-
             return null;
         }
 
@@ -201,20 +198,21 @@ pub const KeyboardDriver = struct {
 
         // Combine with extended prefix if needed
         if (self.extended_code) {
+            self.console.println("Extended code", .{});
             scancode = (self.scancode_buffer << 8) | byte;
             self.buffer_index += 1;
         }
 
         // Handle key release events
         if (self.release_code) {
+            self.console.println("Release code", .{});
             // Update modifier state
-            switch (scancode) {
-                sc.ScanCode.leftShift(self.scancode_set), sc.ScanCode.rightShift(self.scancode_set) => self.shift_pressed = false,
-                sc.ScanCode.leftCtrl(self.scancode_set) => self.ctrl_pressed = false,
-                sc.ScanCode.rightCtrl(self.scancode_set) => self.ctrl_pressed = false,
-                sc.ScanCode.leftAlt(self.scancode_set) => self.alt_pressed = false,
-                sc.ScanCode.rightAlt(self.scancode_set) => self.alt_pressed = false,
-                else => {},
+            if (scancode == self.scancode_set.left_shift or scancode == self.scancode_set.right_shift) {
+                self.shift_pressed = false;
+            } else if (scancode == self.scancode_set.left_ctrl or scancode == self.scancode_set.right_ctrl) {
+                self.ctrl_pressed = false;
+            } else if (scancode == self.scancode_set.left_alt or scancode == self.scancode_set.right_alt) {
+                self.alt_pressed = false;
             }
 
             // Reset state for next scancode
@@ -227,50 +225,42 @@ pub const KeyboardDriver = struct {
         }
 
         // Handle key press events
-        // Update modifier state
-        switch (scancode) {
-            sc.ScanCode.leftShift(self.scancode_set), sc.ScanCode.rightShift(self.scancode_set) => {
-                self.shift_pressed = true;
-                self.reset();
-                return null;
-            },
-            sc.ScanCode.leftCtrl(self.scancode_set), sc.ScanCode.rightCtrl(self.scancode_set) => {
-                self.ctrl_pressed = true;
-                self.reset();
-                return null;
-            },
-            sc.ScanCode.leftAlt(self.scancode_set), sc.ScanCode.rightAlt(self.scancode_set) => {
-                self.alt_pressed = true;
-                self.reset();
-                return null;
-            },
-            sc.ScanCode.capsLock(self.scancode_set) => {
-                self.caps_lock_active = !self.caps_lock_active;
-                self.reset();
-                return null;
-            },
-            else => {},
+        // Update modifier state - using if statements instead of switch
+        if (scancode == self.scancode_set.left_shift or scancode == self.scancode_set.right_shift) {
+            self.shift_pressed = true;
+            self.resetBuffer();
+            return null;
+        } else if (scancode == self.scancode_set.left_ctrl or scancode == self.scancode_set.right_ctrl) {
+            self.ctrl_pressed = true;
+            self.resetBuffer();
+            return null;
+        } else if (scancode == self.scancode_set.left_alt or scancode == self.scancode_set.right_alt) {
+            self.alt_pressed = true;
+            self.resetBuffer();
+            return null;
+        } else if (scancode == self.scancode_set.caps_lock) {
+            self.caps_lock_active = !self.caps_lock_active;
+            self.resetBuffer();
+            return null;
         }
 
         // Get the character based on the full scancode
         const result = self.getCharFromScancode(scancode);
 
         // Reset state for next scancode
-        self.reset();
+        self.resetBuffer();
 
         return result;
     }
 
-    // Simple scancode set 2 to ASCII mapping for common keys
-    // This is a simplified mapping for common keys only
-    pub fn mapScanCodeToAscii(self: *KeyboardDriver, scan_code: u8) u8 {
-        _ = self; // Avoid unused parameter warning
-        return scan_code;
-    }
-
     /// Convert scancode to hex string for lookup
-    fn scancodeToHexString(scancode: u16) ![5]u8 {
+    fn scancodeToHexString(_: *KeyboardDriver, scancode: u16) ![5]u8 {
         var buf: [5]u8 = undefined;
+
+        // write the rest of the buffer as 0
+        for (&buf) |*c| {
+            c.* = 0;
+        }
 
         if (scancode <= 0xFF) {
             // Single byte scancode
@@ -281,6 +271,42 @@ pub const KeyboardDriver = struct {
             _ = try std.fmt.bufPrint(&buf, "{X:0>4}", .{scancode});
             return buf;
         }
+        return buf;
+    }
+
+    /// Get the character value from a scancode
+    fn getCharFromScancode(self: *KeyboardDriver, scancode: u16) ?u8 {
+        // Convert scancode to string for map lookup
+        var scancode_str: [5]u8 = undefined;
+        scancode_str = self.scancodeToHexString(scancode) catch return null;
+
+        // Create a slice of the string up to the first null byte
+        var len: usize = 0;
+        while (len < scancode_str.len and scancode_str[len] != 0) {
+            len += 1;
+        }
+        const key_str = scancode_str[0..len];
+
+        self.console.println("Scancode: {s}", .{key_str});
+
+        // Use the appropriate lookup table based on scancode type
+        const key_map_opt = self.scancode_set.set.get(key_str);
+        self.console.println("Key map: {any}", .{key_map_opt});
+
+        if (key_map_opt) |key_map| {
+            // Determine if we should use shifted value
+            // XOR with caps lock for letters
+            return if ((@as(u1, if (self.shift_pressed) 1 else 0) ^ @as(u1, if (self.caps_lock_active) 1 else 0)) != 0) key_map.shifted else key_map.base;
+        }
+
+        return null;
+    }
+
+    // Simple scancode set 2 to ASCII mapping for common keys
+    // This is a simplified mapping for common keys only
+    pub fn mapScanCodeToAscii(self: *KeyboardDriver, scan_code: u8) u8 {
+        _ = self; // Avoid unused parameter warning
+        return scan_code;
     }
 
     /// Writer for the VGA text mode driver

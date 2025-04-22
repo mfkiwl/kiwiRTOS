@@ -91,8 +91,12 @@ pub fn main() void {
 
     if (keyboard_driver != null) {
         while (true) {
-            // vga_text_driver.printk("{c}", .{keyboard_driver.?.getChar()});
-            vga_text_driver.println("Got scan code: 0x{x:0>2}", .{keyboard_driver.?.getChar()});
+            const char = keyboard_driver.?.getChar();
+            if (char.char != null) {
+                vga_text_driver.println("Processed byte: 0x{X:0>2}, Output char: '{c}'", .{ char.byte, char.char.? });
+            } else {
+                vga_text_driver.println("Processed byte: 0x{X:0>2}, No output", .{char.byte});
+            }
         }
     } else {
         // Handle initialization failure
