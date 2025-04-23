@@ -15,6 +15,7 @@ pub const arch = @import("arch/arch.zig");
 pub const drivers = @import("drivers/drivers.zig");
 pub const kernel = @import("kernel/kernel.zig");
 pub const lib = @import("lib/lib.zig");
+pub const sc = @import("drivers/keyboard/scancode.zig");
 
 // This the trap/exception entrypoint, this will be invoked any time
 // we get an exception (e.g if something in the kernel goes wrong) or
@@ -88,15 +89,20 @@ pub fn main() void {
     // Initialize keyboard driver
     var keyboard_driver: ?drivers.keyboard.KeyboardDriver = undefined;
     keyboard_driver = drivers.keyboard.KeyboardDriver.init(&ps2_driver, &vga_text_driver);
-
     if (keyboard_driver != null) {
         while (true) {
             const char = keyboard_driver.?.getChar();
             if (char.char != null) {
-                vga_text_driver.println("Processed byte: 0x{X:0>2}, Output char: '{c}'", .{ char.byte, char.char.? });
-            } else {
-                vga_text_driver.println("Processed byte: 0x{X:0>2}, No output", .{char.byte});
+                vga_text_driver.printk("{c}", .{char.char.?});
             }
+            // else {
+            //     vga_text_driver.println("\nScancode: 0x{X:0>2}", .{char.byte});
+            // }
+            // if (char.char != null) {
+            //     vga_text_driver.println("Scancode: 0x{X:0>2}, Char: '{c}'", .{ char.byte, char.char.? });
+            // } else {
+            //     vga_text_driver.println("Scancode: 0x{X:0>2}", .{char.byte});
+            // }
         }
     } else {
         // Handle initialization failure

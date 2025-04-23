@@ -174,9 +174,21 @@ pub const VgaTextDriver = struct {
     /// Put a character to the VGA buffer
     pub fn putChar(self: *VgaTextDriver, ch: u8) void {
         switch (ch) {
+            // Newlines should create a new line
             '\n' => {
                 self.column = 0;
                 self.row += 1;
+            },
+            // Backspaces should move the cursor back one column
+            '\x08' => {
+                if (self.column > 0) {
+                    self.putCharAt(' ', self.column - 1, self.row);
+                    self.column -= 1;
+                }
+            },
+            // Tabs should move the cursor to the next tab stop
+            '\t' => {
+                self.column = (self.column + 8) & ~@as(usize, 7);
             },
             else => {
                 self.putCharAt(ch, self.column, self.row);

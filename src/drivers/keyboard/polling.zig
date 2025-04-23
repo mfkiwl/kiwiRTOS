@@ -69,7 +69,7 @@ pub const KeyboardDriver = struct {
         var driver = KeyboardDriver{
             .ps2 = ps2_driver,
             .console = vga_driver,
-            .scancode_set = sc.ScanCodeSet2,
+            .scancode_set = sc.ScanCodeSet1,
             .led_state = KeyboardLED{
                 .scroll_lock = 0,
                 .num_lock = 0,
@@ -179,13 +179,13 @@ pub const KeyboardDriver = struct {
             self.extended_code = true;
             self.scancode_buffer = byte;
             self.buffer_index = 1;
-            self.console.println("Extended code", .{});
+            // self.console.println("Extended code", .{});
             return null;
         }
         // Skip release codes
         if (byte == self.scancode_set.release) {
             self.release_code = true;
-            self.console.println("Release code", .{});
+            // self.console.println("Release code", .{});
             // If we're in extended mode, update the buffer
             if (self.extended_code) {
                 self.scancode_buffer = (self.scancode_buffer << 8) | byte;
@@ -198,14 +198,14 @@ pub const KeyboardDriver = struct {
 
         // Combine with extended prefix if needed
         if (self.extended_code) {
-            self.console.println("Extended code", .{});
+            // self.console.println("Extended code", .{});
             scancode = (self.scancode_buffer << 8) | byte;
             self.buffer_index += 1;
         }
 
         // Handle key release events
         if (self.release_code) {
-            self.console.println("Release code", .{});
+            // self.console.println("Release code", .{});
             // Update modifier state
             if (scancode == self.scancode_set.left_shift or scancode == self.scancode_set.right_shift) {
                 self.shift_pressed = false;
@@ -287,11 +287,11 @@ pub const KeyboardDriver = struct {
         }
         const key_str = scancode_str[0..len];
 
-        self.console.println("Scancode: {s}", .{key_str});
+        // self.console.println("Scancode: {s}", .{key_str});
 
         // Use the appropriate lookup table based on scancode type
         const key_map_opt = self.scancode_set.set.get(key_str);
-        self.console.println("Key map: {any}", .{key_map_opt});
+        // self.console.println("Key map: {any}", .{key_map_opt});
 
         if (key_map_opt) |key_map| {
             // Determine if we should use shifted value

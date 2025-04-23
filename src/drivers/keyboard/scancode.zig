@@ -138,14 +138,15 @@ pub const ScanCodeSet1: ScanCodeSet = .{
         .{ "E053", KeyMap{ .base = 0x7F, .shifted = 0x7F } }, // Delete (DEL character)
     }),
     .extended = 0xE0,
-    .release = 0xF0,
-    .left_shift = 0x12,
-    .right_shift = 0x59,
-    .left_ctrl = 0x14,
-    .right_ctrl = 0x14,
-    .left_alt = 0x11,
-    .right_alt = 0x11,
-    .caps_lock = 0x58,
+    .release = 0x9E,
+    .left_shift = 0x2A,
+    .right_shift = 0x36,
+    .left_ctrl = 0x1D,
+    .right_ctrl = 0x1D,
+    .left_alt = 0xB8,
+    // Extended prefix
+    .right_alt = 0x38,
+    .caps_lock = 0xBA,
 };
 
 /// Scancode set 2 (most common) for a "US QWERTY" keyboard
@@ -276,6 +277,8 @@ pub const ScanCodeSet3: ScanCodeSet = .{
 };
 
 /// Represents the set of supported scancodes
+///
+/// A scan code set is a set of codes that determine when a key is pressed or repeated, or released. There are 3 different sets of scan codes. The oldest is "scan code set 1", the default is "scan code set 2", and there is a newer (more complex) "scan code set 3". Note: Normally on PC compatible systems the keyboard itself uses scan code set 2 and the keyboard controller translates this into scan code set 1 for compatibility. See "8042"_PS/2_Controller for more information about this translation.
 pub const ScanCodeSets = enum(u8) {
     /// Scancode set 1 (default)
     SCANCODE_SET_1 = 0x01,

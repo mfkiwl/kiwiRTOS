@@ -38,7 +38,7 @@ debug arch='x86_64':
 # Clean the project
 clean:
   @# Remove cached files
-  @sudo rm -rf .zig-cache zig-out .img qemu.log
+  @rm -rf .zig-cache zig-out .img qemu.log
 
 # Run code quality tools
 check:
