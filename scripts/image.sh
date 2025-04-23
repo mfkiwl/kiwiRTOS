@@ -51,6 +51,7 @@ image() {
       --root-directory="${mount_point}" \
       --no-floppy \
       --modules="normal part_msdos ext2 multiboot" \
+      --target=i386-pc \
       "${LOOP_DEVICE1}"
   else
     # Install GRUB in the MBR from another architecture
