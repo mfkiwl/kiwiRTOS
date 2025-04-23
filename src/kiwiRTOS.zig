@@ -33,6 +33,18 @@ pub export fn kmain() callconv(.C) noreturn {
 }
 
 pub fn main() void {
+    // Initialize architecture-specific components
+    // arch.initIrqController();
+
+    // // Initialize the global IRQ registry
+    // kernel.irq.initGlobalRegistry(&arch.irq_controller);
+
+    // // Enable interrupts
+    // arch.sti();
+
+    // // Register IRQ handlers
+    // _ = kernel.irq.registerHandler(1, keyboardIrqHandler);
+
     // Initialize VGA text driver
     var vga_text_driver: drivers.vga.VgaTextDriver = undefined;
     vga_text_driver = drivers.vga.VgaTextDriver.init(drivers.vga.VGA_TEXT_BUFFER);
@@ -109,4 +121,12 @@ pub fn main() void {
         vga_text_driver.println("Keyboard initialization failed!", .{});
         while (true) {}
     }
+}
+
+// Example IRQ handler for keyboard
+fn keyboardIrqHandler(irq_num: u32) void {
+    _ = irq_num;
+    // Handle keyboard interrupt
+    // const scancode = arch.inb(drivers.ps2.PS2_DATA_PORT);
+    // Process the scancode...
 }

@@ -27,6 +27,22 @@ pub inline fn sti() void {
     asm volatile ("sti");
 }
 
+/// Load the Global Descriptor Table (GDT)
+pub inline fn lgdt(base: *const anyopaque, size: u16) void {
+    // Global Descriptor Table Register (GDTR)
+    const GDTR = packed struct {
+        length: u16,
+        base: *const anyopaque,
+    };
+    var gdtr: GDTR = undefined;
+    gdtr.length = size;
+    gdtr.base = base;
+    asm volatile ("lgdt %[gdtr]"
+        :
+        : [gdtr] "m" (gdtr),
+    );
+}
+
 // Memory-mapped I/O addresses
 
 /// VGA text mode buffer address for x86_64

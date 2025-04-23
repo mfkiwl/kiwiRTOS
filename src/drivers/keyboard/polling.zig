@@ -296,9 +296,8 @@ pub const KeyboardDriver = struct {
         if (key_map_opt) |key_map| {
             // Determine if we should use shifted value
             // XOR with caps lock for letters
-            return if ((@as(u1, if (self.shift_pressed) 1 else 0) ^ @as(u1, if (self.caps_lock_active) 1 else 0)) != 0) key_map.shifted else key_map.base;
+            return if ((self.shift_pressed or self.caps_lock_active) and (self.shift_pressed != self.caps_lock_active)) key_map.shifted else key_map.base;
         }
-
         return null;
     }
 
