@@ -19,6 +19,8 @@ pub const inb = arch_impl.inb;
 pub const cli = arch_impl.cli;
 /// Enable interrupts
 pub const sti = arch_impl.sti;
+/// Halt the CPU
+pub const hlt = arch_impl.hlt;
 
 // Re-export architecture-specific constants
 
@@ -31,43 +33,10 @@ pub const UART_BUFFER = arch_impl.UART_BUFFER;
 
 // Port‑mapped I/O
 
+// Generic PS/2 Controller I/O Ports
 /// Generic PS/2 controller data port (read/write)
 pub const PS2_DATA_PORT = arch_impl.PS2_DATA_PORT;
 /// Generic PS/2 controller status port (read)
 pub const PS2_STATUS_PORT = arch_impl.PS2_STATUS_PORT;
 /// Generic PS/2 controller command port (write)
 pub const PS2_COMMAND_PORT = arch_impl.PS2_COMMAND_PORT;
-
-// // Import architecture-specific IRQ module
-// const irq_impl = switch (builtin.cpu.arch) {
-//     .x86_64 => @import("./x86_64/irq.zig"),
-//     .aarch64 => @import("./arm/irq.zig"),
-//     .riscv64, .riscv32 => @import("./riscv/irq.zig"),
-//     else => @compileError("Unsupported architecture"),
-// };
-
-// // Re-export architecture-specific IRQ controller
-// pub const irq_controller = switch (builtin.cpu.arch) {
-//     .x86_64 => irq_impl.x86_64IrqController,
-//     .aarch64 => irq_impl.armIrqController,
-//     .riscv64, .riscv32 => irq_impl.riscvIrqController,
-//     else => @compileError("Unsupported architecture"),
-// };
-
-// // Re-export architecture-specific IRQ initialization function
-// pub const initIrqController = switch (builtin.cpu.arch) {
-//     .x86_64 => irq_impl.initPic,
-//     .aarch64 => @compileError("ARM IRQ initialization not implemented"),
-//     .riscv64, .riscv32 => @compileError("RISC-V IRQ initialization not implemented"),
-//     else => @compileError("Unsupported architecture"),
-// };
-
-// pub fn init() void {
-//     // Initialize architecture-specific components
-//     irq.initGlobalRegistry(&arch.irq_controller);
-// }
-
-// pub fn registerIrqHandler(irq_num: u32, handler: irq.IrqHandlerFn) void {
-//     irq.registerHandler(irq_num, handler);
-// }
-

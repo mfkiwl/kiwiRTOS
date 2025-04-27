@@ -130,3 +130,11 @@ pub const Idt = struct {
         self.entries[n].offset_high = @truncate((handler >> 32) & 0xFFFFFFFF);
     }
 };
+
+/// Exception handler
+pub export fn exception_handler() callconv(.C) noreturn {
+    while (true) {
+        arch.cli();
+        arch.hlt();
+    }
+}

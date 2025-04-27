@@ -1,5 +1,5 @@
 global long_mode_start
-extern rust_main
+extern kmain
 
 section .text
 bits 64
@@ -12,8 +12,7 @@ long_mode_start:
   mov fs, ax
   mov gs, ax
 
-  ; call the rust main
-  extern kmain
+  ; call the kernel entry point
   call kmain
 
   ; print `OKAY` to screen

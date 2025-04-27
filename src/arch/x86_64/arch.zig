@@ -1,4 +1,4 @@
-//! This file provides x86_64-specific definitions.
+//! This file provides x86_64 (IA-32e) specific definitions.
 
 /// Read a byte from an x86_64 I/O port
 pub inline fn inb(port: u16) u8 {
@@ -27,6 +27,11 @@ pub inline fn sti() void {
     asm volatile ("sti");
 }
 
+/// Halt the CPU
+pub inline fn hlt() void {
+    asm volatile ("hlt");
+}
+
 /// Load the Global Descriptor Table (GDT)
 pub inline fn lgdt(base: *const anyopaque, size: u16) void {
     // Global Descriptor Table Register (GDTR)
@@ -52,7 +57,7 @@ pub const UART_BUFFER = 0x3F8;
 
 // Port‑mapped I/O
 
-// PS/2 Controller I/O Ports
+// PS/2 Controller I/O Ports for x86_64
 /// PS/2 controller data port (read/write) for x86_64
 pub const PS2_DATA_PORT = 0x60;
 /// PS/2 controller status port (read) for x86_64

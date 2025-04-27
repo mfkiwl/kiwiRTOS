@@ -24,8 +24,11 @@ pub const KeyboardResponse = enum(u8) {
     SELF_TEST_PASS = 0xAA,
 };
 
+/// Keyboard character
 pub const KeyboardChar = struct {
+    /// Raw scancode byte
     byte: u8,
+    /// ASCII character (if applicable)
     char: ?u8,
 };
 
