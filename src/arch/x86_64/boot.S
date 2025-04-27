@@ -1,3 +1,5 @@
+; This file is the protected mode (32-bit) entry point for the kernel.
+
 global _start
 extern long_mode_start
 

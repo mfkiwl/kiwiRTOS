@@ -1,3 +1,5 @@
+; This file is the long mode (64-bit) entry point for the kernel.
+
 global long_mode_start
 extern kmain
 
