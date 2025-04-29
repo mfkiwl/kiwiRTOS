@@ -10,6 +10,8 @@ pub const IDT_TRAP_GATE_16 = 0x7;
 pub const IDT_INTERRUPT_GATE_32 = 0xE;
 pub const IDT_TRAP_GATE_32 = 0xF;
 
+extern const isr_stub_table: []void;
+
 // Descriptor privilege level (DPL)
 pub const DPL = enum(u2) {
     /// DPL for kernel code and data
@@ -20,6 +22,9 @@ pub const DPL = enum(u2) {
 
 // Number of entries in the IDT
 pub const IDT_ENTRIES = 256;
+
+// GDT segment selector for kernel code
+pub const GDT_KERNEL_CODE_SEGMENT = 0x08;
 
 // IDT Entry structure (64-bit)
 pub const IdtEntry = packed struct {
@@ -70,6 +75,8 @@ pub const IdtRegister = packed struct {
 pub const Idt = struct {
     /// IDT entries; aligned to 16 bytes
     entries: [IDT_ENTRIES]IdtEntry align(0x10),
+    /// Vectors that are used by the IDT
+    vectors: [IDT_ENTRIES]bool,
     /// IDT register (IDTR)
     idtr: IdtRegister,
 
@@ -77,6 +84,7 @@ pub const Idt = struct {
     pub fn init() Idt {
         var idt: Idt = Idt{
             .entries = undefined,
+            .vectors = undefined,
             .idtr = undefined,
         };
 
@@ -101,6 +109,15 @@ pub const Idt = struct {
                 .offset_high = 0,
                 .reserved = 0,
             };
+            self.vectors[i] = false;
+        }
+    }
+
+    /// Set the IDT entries
+    pub fn setEntries(self: *Idt) void {
+        for (0..IDT_ENTRIES) |vector| {
+            self.setDescriptor(vector, @intFromPtr(isr_stub_table[vector]), 0x8E);
+            self.vectors[vector] = true;
         }
     }
 
@@ -117,17 +134,18 @@ pub const Idt = struct {
             :
             : [idt_reg] "r" (&self.idtr),
         );
+        // Enable interrupts
+        arch.sti();
     }
-    // Set an IDT entry
-    pub fn setEntry(self: *Idt, n: u8, handler: u64, segsel: u16, ist: u3, gate_type: u4, dpl: u2, present: u1) void {
-        self.entries[n].isr_low = @truncate(handler & 0xFFFF);
-        self.entries[n].kernel_cs = segsel;
-        self.entries[n].ist = ist;
-        self.entries[n].attributes.gate_type = gate_type;
-        self.entries[n].attributes.dpl = dpl;
-        self.entries[n].attributes.present = present;
-        self.entries[n].offset_mid = @truncate((handler >> 16) & 0xFFFF);
-        self.entries[n].offset_high = @truncate((handler >> 32) & 0xFFFFFFFF);
+
+    // Set an IDT descriptor entry
+    pub fn setDescriptor(self: *Idt, vector: u8, isr: u64, flags: u8) void {
+        self.entries[vector].isr_low = @truncate(isr & 0xFFFF);
+        self.entries[vector].kernel_cs = GDT_KERNEL_CODE_SEGMENT;
+        self.entries[vector].ist = 0;
+        self.entries[vector].attributes = flags;
+        self.entries[vector].offset_mid = @truncate((isr >> 16) & 0xFFFF);
+        self.entries[vector].offset_high = @truncate((isr >> 32) & 0xFFFFFFFF);
     }
 };
 
