@@ -22,7 +22,7 @@ pub inline fn cli() void {
     asm volatile ("cli");
 }
 
-/// Enable interrupts (set interrupt flag)
+/// Restore interrupts (set interrupt flag)
 pub inline fn sti() void {
     asm volatile ("sti");
 }

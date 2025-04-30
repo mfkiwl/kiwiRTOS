@@ -20,6 +20,7 @@ in pkgs.mkShell {
     pkgs.qemu # For testing the OS
     pkgs.nixfmt # Nix formatter
     pkgs.parted # Partitioning tool
+    # pkgs.gas # GNU Assembler
 
     # Include GRUB packages
     nativeGrub # Native GRUB (needed for installation on Linux host)

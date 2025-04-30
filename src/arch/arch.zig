@@ -17,7 +17,7 @@ pub const outb = arch_impl.outb;
 pub const inb = arch_impl.inb;
 /// Disable interrupts
 pub const cli = arch_impl.cli;
-/// Enable interrupts
+/// Restore interrupts
 pub const sti = arch_impl.sti;
 /// Halt the CPU
 pub const hlt = arch_impl.hlt;

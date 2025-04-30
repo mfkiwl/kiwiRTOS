@@ -20,7 +20,10 @@ pub const sc = @import("drivers/keyboard/scancode.zig");
 // This the trap/exception entrypoint, this will be invoked any time
 // we get an exception (e.g if something in the kernel goes wrong) or
 // an interrupt gets delivered.
-pub export fn trap() align(4) callconv(.C) noreturn {
+pub export fn trap() callconv(.C) noreturn {
+    arch.cli();
+    arch.hlt();
+    // Ensure the trap handler never returns
     while (true) {}
 }
 

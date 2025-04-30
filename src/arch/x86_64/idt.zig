@@ -26,7 +26,7 @@ pub const IDT_ENTRIES = 256;
 // GDT segment selector for kernel code
 pub const GDT_KERNEL_CODE_SEGMENT = 0x08;
 
-// IDT Entry structure (64-bit)
+// IDT Entry structure (64-bit) Call-Gate Descriptor
 pub const IdtEntry = packed struct {
     /// The lower bits of the ISR's address
     isr_low: u16,
@@ -52,9 +52,15 @@ pub const Ist = packed struct {
     reserved: u35 = 0,
 };
 
+// The type of gate the IDT entry represents
+pub const GateType = enum(u4) {
+    GATE_INTERRUPT = 0xE,
+    GATE_TRAP = 0xF,
+};
+
 pub const IdtAttributes = packed struct {
     /// Gate type (e.g., interrupt gate, trap gate)
-    gate_type: u4,
+    gate_type: GateType,
     /// Reserved, should be 0
     reserved: u1 = 0,
     /// Descriptor Privilege Level
@@ -97,22 +103,6 @@ pub const Idt = struct {
         return idt;
     }
 
-    /// Clear the IDT
-    pub fn clear(self: *Idt) void {
-        for (0..IDT_ENTRIES) |i| {
-            self.entries[i] = IdtEntry{
-                .isr_low = 0,
-                .kernel_cs = 0,
-                .ist = 0,
-                .attributes = 0,
-                .offset_mid = 0,
-                .offset_high = 0,
-                .reserved = 0,
-            };
-            self.vectors[i] = false;
-        }
-    }
-
     /// Set the IDT entries
     pub fn setEntries(self: *Idt) void {
         for (0..IDT_ENTRIES) |vector| {
@@ -148,11 +138,3 @@ pub const Idt = struct {
         self.entries[vector].offset_high = @truncate((isr >> 32) & 0xFFFFFFFF);
     }
 };
-
-/// Exception handler
-pub export fn exception_handler() callconv(.C) noreturn {
-    while (true) {
-        arch.cli();
-        arch.hlt();
-    }
-}
