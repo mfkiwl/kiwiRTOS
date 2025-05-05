@@ -70,4 +70,4 @@ pub const x86_64IrqController = irq.IrqController{
     .disableFn = disableIrq,
     .acknowledgeFn = acknowledgeIrq,
     .isPendingFn = isIrqPending,
-}; 
+};

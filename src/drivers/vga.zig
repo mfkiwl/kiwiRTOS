@@ -21,14 +21,51 @@ pub const VGA_TEXT_TAB_WIDTH = @as(usize, 8);
 pub const VGA_TEXT_BUFFER = arch.VGA_TEXT_BUFFER;
 
 /// VGA CRT Controller (CRTC) I/O ports
-/// CRTC Index port
-pub const VGA_CRTC_INDEX = 0x3D4;
-/// CRTC Data port
-pub const VGA_CRTC_DATA = 0x3D5;
+pub const VgaCrtcPort = enum(u16) {
+    /// CRTC Index port
+    VGA_CRTC_INDEX = 0x3D4,
+    /// CRTC Data port
+    VGA_CRTC_DATA = 0x3D5,
+};
+
 /// VGA cursor low byte port
-pub const VGA_CURSOR_LOW = 0x0F;
-/// VGA cursor high byte port
-pub const VGA_CURSOR_HIGH = 0x0E;
+pub const VgaCursorPort = enum(u16) {
+    /// VGA cursor low byte port
+    VGA_CURSOR_LOW = 0x0F,
+    /// VGA cursor high byte port
+    VGA_CURSOR_HIGH = 0x0E,
+};
+
+/// CRTC Register Indecies
+pub const CRTCRegister = enum(u8) {
+    /// Cursor Start Register
+    CURSOR_START = 0x0A,
+    /// Cursor End Register
+    CURSOR_END = 0x0B,
+    /// Start Address High Register
+    START_ADDRESS_HIGH = 0x0C,
+    /// Start Address Low Register
+    START_ADDRESS_LOW = 0x0D,
+    /// Cursor Location High Register
+    CURSOR_LOCATION_HIGH = 0x0E,
+};
+
+pub const CursorStartReg = packed struct {
+    /// which scanline the cursor begins on (0–31)
+    scanline_start: u5,
+    /// when set = cursor off
+    disable: u1,
+    /// must remain zero
+    reserved: u2,
+};
+
+/// CRTC Start Bits
+pub const CRTCStartBits = packed struct {
+    /// which scanline the cursor begins on (0–31)
+    scanline_start: u5,
+    /// which character cell the cursor begins on (0–79)
+    char_cell_start: u6,
+};
 
 /// VGA text mode colors
 pub const VgaTextColorCode = enum(u4) {
@@ -114,13 +151,11 @@ pub const VgaTextDriver = struct {
 
     /// Initialize a VGA text mode driver
     pub fn init(buffer_addr: usize) VgaTextDriver {
-        // Enable the cursor
-        arch.outb(VGA_CRTC_INDEX, 0x0A);
-        arch.outb(VGA_CRTC_DATA, (arch.inb(VGA_CRTC_DATA) & 0xC0) | 0);
+        enableCursor();
 
         // Enable blinking
-        arch.outb(VGA_CRTC_INDEX, 0x0B);
-        arch.outb(VGA_CRTC_DATA, (arch.inb(VGA_CRTC_DATA) & 0xE0) | 15);
+        arch.outb(@intFromEnum(VgaCrtcPort.VGA_CRTC_INDEX), @intFromEnum(CRTCRegister.CURSOR_END));
+        arch.outb(@intFromEnum(VgaCrtcPort.VGA_CRTC_DATA), (arch.inb(@intFromEnum(VgaCrtcPort.VGA_CRTC_DATA)) & 0xE0) | 15);
 
         var driver: VgaTextDriver = VgaTextDriver{
             .buffer = @ptrFromInt(buffer_addr),
@@ -131,6 +166,36 @@ pub const VgaTextDriver = struct {
         driver.clear();
         driver.updateCursor();
         return driver;
+    }
+
+    /// Enable the cursor
+    pub fn enableCursor() void {
+        arch.outb(@intFromEnum(VgaCrtcPort.VGA_CRTC_INDEX), @intFromEnum(CRTCRegister.CURSOR_START));
+        arch.outb(@intFromEnum(VgaCrtcPort.VGA_CRTC_DATA), (arch.inb(@intFromEnum(VgaCrtcPort.VGA_CRTC_DATA)) & 0xC0) | 1);
+    }
+
+    /// Disable the cursor
+    pub fn disableCursor() void {
+        const cursor_start = CursorStartReg{
+            .scanline_start = 0,
+            .disable = 1,
+            .reserved = 0,
+        };
+        arch.outb(@intFromEnum(VgaCrtcPort.VGA_CRTC_INDEX), @intFromEnum(CRTCRegister.CURSOR_START));
+        arch.outb(@intFromEnum(VgaCrtcPort.VGA_CRTC_DATA), @bitCast(cursor_start));
+    }
+
+    /// Updates the hardware cursor position
+    pub fn updateCursor(self: *const VgaTextDriver) void {
+        const pos = self.row * VGA_TEXT_WIDTH + self.column;
+
+        // Send low byte of cursor position
+        arch.outb(@intFromEnum(VgaCrtcPort.VGA_CRTC_INDEX), @intFromEnum(VgaCursorPort.VGA_CURSOR_LOW));
+        arch.outb(@intFromEnum(VgaCrtcPort.VGA_CRTC_DATA), @as(u8, @truncate(pos)));
+
+        // Send high byte of cursor position
+        arch.outb(@intFromEnum(VgaCrtcPort.VGA_CRTC_INDEX), @intFromEnum(VgaCursorPort.VGA_CURSOR_HIGH));
+        arch.outb(@intFromEnum(VgaCrtcPort.VGA_CRTC_DATA), @as(u8, @truncate(pos >> 8)));
     }
 
     /// Clear the VGA buffer
@@ -169,19 +234,6 @@ pub const VgaTextDriver = struct {
         self.updateCursor();
     }
 
-    /// Updates the hardware cursor position
-    pub fn updateCursor(self: *const VgaTextDriver) void {
-        const pos = self.row * VGA_TEXT_WIDTH + self.column;
-
-        // Send high byte of cursor position
-        arch.outb(VGA_CRTC_INDEX, VGA_CURSOR_HIGH);
-        arch.outb(VGA_CRTC_DATA, @as(u8, @truncate(pos >> 8)));
-
-        // Send low byte of cursor position
-        arch.outb(VGA_CRTC_INDEX, VGA_CURSOR_LOW);
-        arch.outb(VGA_CRTC_DATA, @as(u8, @truncate(pos)));
-    }
-
     /// Set the current color of the VGA driver
     pub fn setColor(self: *VgaTextDriver, color: VgaTextColor) void {
         self.color = color;
@@ -215,7 +267,7 @@ pub const VgaTextDriver = struct {
             },
             // Backspaces should move the cursor back one column
             '\x08' => {
-                while (self.column > 0 and self.getCharAt(self.column, self.row) == '\x00') {
+                while (self.column > 0 and self.getCharAt(self.column - 1, self.row) == '\x00') {
                     self.column -= 1;
                 }
                 self.setCharAt(0, self.column, self.row);

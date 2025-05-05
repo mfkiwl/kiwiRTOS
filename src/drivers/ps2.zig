@@ -14,14 +14,23 @@ pub const PS2_COMMAND_PORT = arch.PS2_COMMAND_PORT;
 
 /// PS/2 controller commands
 pub const ControllerCommand = enum(u8) {
+    /// Read configuration byte
     READ_CONFIG = 0x20,
+    /// Write configuration byte
     WRITE_CONFIG = 0x60,
+    /// Disable first PS/2 port
     DISABLE_PORT1 = 0xAD,
+    /// Disable second PS/2 port
     DISABLE_PORT2 = 0xA7,
+    /// Enable first PS/2 port
     ENABLE_PORT1 = 0xAE,
+    /// Enable second PS/2 port
     ENABLE_PORT2 = 0xA8,
+    /// Test controller
     TEST_CONTROLLER = 0xAA,
+    /// Test first PS/2 port
     TEST_PORT1 = 0xAB,
+    /// Test second PS/2 port
     TEST_PORT2 = 0xA9,
 };
 
