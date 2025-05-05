@@ -11,6 +11,7 @@
 //! - `syscalls`: Handles system calls for the RTOS
 
 const std = @import("std");
+
 pub const arch = @import("arch/arch.zig");
 pub const drivers = @import("drivers/drivers.zig");
 pub const kernel = @import("kernel/kernel.zig");
@@ -54,7 +55,7 @@ pub fn main() void {
     vga_text_driver.clear();
 
     // Print a welcome message
-    vga_text_driver.setColor(drivers.vga.VgaTextColor.new(.WHITE, .BLACK));
+    vga_text_driver.setColor(drivers.vga.VgaTextColor.new(.VGA_COLOR_WHITE, .VGA_COLOR_BLACK));
     vga_text_driver.putStr("KiwiRTOS VGA Text Driver Demo\n");
     vga_text_driver.putStr("----------------------------\n\n");
 
@@ -62,14 +63,15 @@ pub fn main() void {
     var i: usize = 0;
     while (i < 30) { // Intentionally print more than 25 lines to demonstrate scrolling
         if (i % 2 == 0) {
-            vga_text_driver.setColor(drivers.vga.VgaTextColor.new(.LIGHT_RED, .BLACK));
+            vga_text_driver.setColor(drivers.vga.VgaTextColor.new(.VGA_COLOR_LIGHT_RED, .VGA_COLOR_BLACK));
             vga_text_driver.println("Hello, {s} world!", .{"red"});
         } else {
-            vga_text_driver.setColor(drivers.vga.VgaTextColor.new(.LIGHT_GREEN, .BLACK));
+            vga_text_driver.setColor(drivers.vga.VgaTextColor.new(.VGA_COLOR_LIGHT_GREEN, .VGA_COLOR_BLACK));
             vga_text_driver.println("Hello, {s} world!", .{"green"});
         }
         i += 1;
     }
+
     vga_text_driver.scroll();
     vga_text_driver.println("{c}", .{'a'}); // a
     vga_text_driver.println("{c}", .{'Q'}); // Q
