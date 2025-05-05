@@ -14,66 +14,92 @@ pub const VGA_TEXT_HEIGHT = @as(usize, 25);
 /// VGA text mode size
 pub const VGA_TEXT_SIZE = VGA_TEXT_WIDTH * VGA_TEXT_HEIGHT;
 
+/// VGA text mode tab width
+pub const VGA_TEXT_TAB_WIDTH = @as(usize, 8);
+
 /// VGA text mode buffer address
 pub const VGA_TEXT_BUFFER = arch.VGA_TEXT_BUFFER;
 
-/// VGA I/O ports
-/// VGA CRTC index port
-const VGA_CRTC_INDEX = 0x3D4;
-/// VGA CRTC data port
-const VGA_CRTC_DATA = 0x3D5;
-/// VGA cursor high byte port
-const VGA_CURSOR_HIGH = 0x0E;
+/// VGA CRT Controller (CRTC) I/O ports
+/// CRTC Index port
+pub const VGA_CRTC_INDEX = 0x3D4;
+/// CRTC Data port
+pub const VGA_CRTC_DATA = 0x3D5;
 /// VGA cursor low byte port
-const VGA_CURSOR_LOW = 0x0F;
+pub const VGA_CURSOR_LOW = 0x0F;
+/// VGA cursor high byte port
+pub const VGA_CURSOR_HIGH = 0x0E;
 
 /// VGA text mode colors
-pub const VgaTextColorCode = enum(u8) {
-    BLACK = 0,
-    BLUE = 1,
-    GREEN = 2,
-    CYAN = 3,
-    RED = 4,
-    MAGENTA = 5,
-    BROWN = 6,
-    LIGHT_GRAY = 7,
-    DARK_GRAY = 8,
-    LIGHT_BLUE = 9,
-    LIGHT_GREEN = 10,
-    LIGHT_CYAN = 11,
-    LIGHT_RED = 12,
-    LIGHT_MAGENTA = 13,
-    YELLOW = 14,
-    WHITE = 15,
+pub const VgaTextColorCode = enum(u4) {
+    /// VGA Text Mode Black
+    VGA_COLOR_BLACK = 0,
+    /// VGA Text Mode Blue
+    VGA_COLOR_BLUE = 1,
+    /// VGA Text Mode Green
+    VGA_COLOR_GREEN = 2,
+    /// VGA Text Mode Cyan
+    VGA_COLOR_CYAN = 3,
+    /// VGA Text Mode Red
+    VGA_COLOR_RED = 4,
+    /// VGA Text Mode Magenta
+    VGA_COLOR_MAGENTA = 5,
+    /// VGA Text Mode Brown
+    VGA_COLOR_BROWN = 6,
+    /// VGA Text Mode Light Gray
+    VGA_COLOR_LIGHT_GRAY = 7,
+    /// VGA Text Mode Dark Gray
+    VGA_COLOR_DARK_GRAY = 8,
+    /// VGA Text Mode Light Blue
+    VGA_COLOR_LIGHT_BLUE = 9,
+    /// VGA Text Mode Light Green
+    VGA_COLOR_LIGHT_GREEN = 10,
+    /// VGA Text Mode Light Cyan
+    VGA_COLOR_LIGHT_CYAN = 11,
+    /// VGA Text Mode Light Red
+    VGA_COLOR_LIGHT_RED = 12,
+    /// VGA Text Mode Light Magenta
+    VGA_COLOR_LIGHT_MAGENTA = 13,
+    /// VGA Text Mode Yellow
+    VGA_COLOR_YELLOW = 14,
+    /// VGA Text Mode White
+    VGA_COLOR_WHITE = 15,
 };
 
 /// Represents a VGA text color
-pub const VgaTextColor = struct {
-    /// The color code (includes foreground and background colors)
-    code: u8,
+pub const VgaTextColor = packed struct {
+    /// The foreground color code
+    fg: u4,
+    /// The background color code
+    bg: u4,
 
     /// Create a new VGA text color from foreground and background colors
     pub fn new(fg: VgaTextColorCode, bg: VgaTextColorCode) VgaTextColor {
         return VgaTextColor{
-            .code = (@as(u8, @intFromEnum(bg)) << 4) | @as(u8, @intFromEnum(fg)),
+            .fg = @as(u4, @intFromEnum(fg)),
+            .bg = @as(u4, @intFromEnum(bg)),
         };
     }
 };
 
 /// Represents a VGA text entry (a character with color attributes)
-pub const VgaTextEntry = struct {
-    code: u16,
+pub const VgaTextEntry = packed struct {
+    /// ASCII character
+    ascii: u8,
+    /// Foreground color
+    fg: u4,
+    /// Background color
+    bg: u4,
 
     /// Create a VGA text entry from a unicode character and a color
     pub fn new(ch: u8, color: VgaTextColor) VgaTextEntry {
         return VgaTextEntry{
-            .code = @as(u16, ch) | (@as(u16, color.code) << 8),
+            .ascii = ch,
+            .fg = color.fg,
+            .bg = color.bg,
         };
     }
 };
-
-// TODO: VGA driver currently uses port I/O because it uses inb and outb
-// It should use the offsets of a buffer address
 
 /// VGA text mode driver
 pub const VgaTextDriver = struct {
@@ -100,7 +126,7 @@ pub const VgaTextDriver = struct {
             .buffer = @ptrFromInt(buffer_addr),
             .row = 0,
             .column = 0,
-            .color = VgaTextColor.new(.GREEN, .BLACK),
+            .color = VgaTextColor.new(.VGA_COLOR_GREEN, .VGA_COLOR_BLACK),
         };
         driver.clear();
         driver.updateCursor();
@@ -109,11 +135,9 @@ pub const VgaTextDriver = struct {
 
     /// Clear the VGA buffer
     pub fn clear(self: *VgaTextDriver) void {
-        for (0..VGA_TEXT_HEIGHT) |y| {
-            for (0..VGA_TEXT_WIDTH) |x| {
-                const index = y * VGA_TEXT_WIDTH + x;
-                self.buffer[index] = VgaTextEntry.new(' ', self.color).code;
-            }
+        const empty_char = @as(u16, @bitCast(VgaTextEntry.new('\x00', self.color)));
+        for (0..VGA_TEXT_SIZE) |i| {
+            self.buffer[i] = empty_char;
         }
         self.row = 0;
         self.column = 0;
@@ -135,7 +159,7 @@ pub const VgaTextDriver = struct {
         const last_row = VGA_TEXT_HEIGHT - 1;
         for (0..VGA_TEXT_WIDTH) |x| {
             const index = last_row * VGA_TEXT_WIDTH + x;
-            self.buffer[index] = VgaTextEntry.new(' ', self.color).code;
+            self.buffer[index] = @as(u16, @bitCast(VgaTextEntry.new('\x00', self.color)));
         }
 
         // Update cursor position
@@ -163,16 +187,26 @@ pub const VgaTextDriver = struct {
         self.color = color;
     }
 
-    /// Put a character with custom color attributes at a specific position
-    pub fn putCharAt(self: *VgaTextDriver, ch: u8, x: usize, y: usize) void {
+    /// Get the character at a specific position
+    pub fn getCharAt(self: *VgaTextDriver, x: usize, y: usize) u8 {
         if (!(x >= VGA_TEXT_WIDTH or y >= VGA_TEXT_HEIGHT)) {
             const index = y * VGA_TEXT_WIDTH + x;
-            self.buffer[index] = VgaTextEntry.new(ch, self.color).code;
+            const entry: VgaTextEntry = @bitCast(self.buffer[index]);
+            return entry.ascii;
+        }
+        return '\x00';
+    }
+
+    /// Put a character with custom color attributes at a specific position
+    pub fn setCharAt(self: *VgaTextDriver, ch: u8, x: usize, y: usize) void {
+        if (!(x >= VGA_TEXT_WIDTH or y >= VGA_TEXT_HEIGHT)) {
+            const index = y * VGA_TEXT_WIDTH + x;
+            self.buffer[index] = @as(u16, @bitCast(VgaTextEntry.new(ch, self.color)));
         }
     }
 
     /// Put a character to the VGA buffer
-    pub fn putChar(self: *VgaTextDriver, ch: u8) void {
+    pub fn setChar(self: *VgaTextDriver, ch: u8) void {
         switch (ch) {
             // Newlines should create a new line
             '\n' => {
@@ -181,17 +215,17 @@ pub const VgaTextDriver = struct {
             },
             // Backspaces should move the cursor back one column
             '\x08' => {
-                if (self.column > 0) {
-                    self.putCharAt(' ', self.column - 1, self.row);
+                while (self.column > 0 and self.getCharAt(self.column - 1, self.row) == '\x00') {
                     self.column -= 1;
                 }
+                self.setCharAt(0, self.column, self.row);
             },
             // Tabs should move the cursor to the next tab stop
             '\t' => {
-                self.column = (self.column + 8) & ~@as(usize, 7);
+                self.column = (self.column + VGA_TEXT_TAB_WIDTH) & ~@as(usize, VGA_TEXT_TAB_WIDTH - 1);
             },
             else => {
-                self.putCharAt(ch, self.column, self.row);
+                self.setCharAt(ch, self.column, self.row);
                 self.column += 1;
             },
         }
@@ -210,7 +244,7 @@ pub const VgaTextDriver = struct {
     /// Write a string to the VGA buffer
     pub fn putStr(self: *VgaTextDriver, str: []const u8) void {
         for (str) |ch| {
-            self.putChar(ch);
+            self.setChar(ch);
         }
     }
 
