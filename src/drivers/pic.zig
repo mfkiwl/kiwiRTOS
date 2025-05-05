@@ -74,18 +74,16 @@ pub const IRQ13_FPU = IRQ_BASE + 13;
 pub const IRQ14_IDE_PRIMARY = IRQ_BASE + 14;
 pub const IRQ15_IDE_SECONDARY = IRQ_BASE + 15;
 
-/// PIC IRQ controller
-pub const PicIrqController = struct {
+/// PIC
+pub const Pic = struct {
     /// Offset for the master PIC
     offset_master: u8,
     /// Offset for the slave PIC
     offset_slave: u8,
-    /// IRQ masks (1 = disabled, 0 = enabled)
-    mask: u16,
 
     /// Initialize the PIC
-    pub fn init(offset_master: u8, offset_slave: u8) PicIrqController {
-        var controller: PicIrqController = PicIrqController{
+    pub fn init(offset_master: u8, offset_slave: u8) Pic {
+        var controller: Pic = Pic{
             .offset_master = offset_master,
             .offset_slave = offset_slave,
         };
@@ -111,7 +109,7 @@ pub const PicIrqController = struct {
     }
 
     /// Remap the PIC IRQs
-    pub fn remap(self: *PicIrqController) void {
+    pub fn remap() void {
         // ICW1: Initialize PIC
         arch.outb(.PIC1_COMMAND, ICW1.ICW1_INIT | ICW1.ICW1_ICW4);
         arch.outb(.PIC2_COMMAND, ICW1.ICW1_INIT | ICW1.ICW1_ICW4);
@@ -131,26 +129,43 @@ pub const PicIrqController = struct {
         arch.outb(.PIC2_DATA, ICW4.ICW4_8086);
 
         // Mask all interrupts (disable all IRQs)
-        self.setMask(0xFFFF);
+        arch.outb(.PIC1_DATA, 0xFF);
+        arch.outb(.PIC2_DATA, 0xFF);
     }
 
-    // Set the IRQ mask
-    pub fn setMask(self: *PicIrqController, mask: u16) void {
-        arch.outb(.PIC1_DATA, @truncate(mask & 0xFF));
-        arch.outb(.PIC2_DATA, @truncate(mask >> 8));
-        self.mask = mask;
+    /// Enable (unmask) a specific IRQ line
+    pub fn enableIrq(irq: u8) void {
+        const port = if (irq < 8) .PIC1_DATA else .PIC2_DATA;
+        // Set the IRQ mask (1 = disabled, 0 = enabled)
+        const value = arch.inb(port) & ~@as(u8, 1 << @truncate(irq & 7));
+        arch.outb(port, value);
     }
 
-    // Get the IRQ mask
-    pub fn getMask(self: *PicIrqController) void {
-        self.mask = (@as(u16, arch.inb(.PIC2_DATA)) << 8) | arch.inb(.PIC1_DATA);
+    /// Disable (mask) a specific IRQ line
+    pub fn disableIrq(irq: u8) void {
+        const port = if (irq < 8) .PIC1_DATA else .PIC2_DATA;
+        // Set the IRQ mask (1 = disabled, 0 = enabled)
+        const value = arch.inb(port) | (1 << @truncate(irq & 7));
+        arch.outb(port, value);
     }
 
-    // Send end-of-interrupt signal to PIC(s)
+    /// Send end-of-interrupt signal to PIC(s)
     pub fn sendEoi(irq: u8) void {
         // If the IRQ is for the slave PIC, send EOI to both PICs
         if (irq >= 8) arch.outb(.PIC2_COMMAND, .PIC_EOI);
         // Always send EOI to master PIC
         arch.outb(.PIC1_COMMAND, .PIC_EOI);
+    }
+
+    /// Acknowledge an IRQ (send EOI)
+    pub fn acknowledgeIrq(irq_num: u32) void {
+        sendEoi(irq_num);
+    }
+
+    /// Check if an IRQ is pending
+    fn isIrqPending(irq_num: u32) bool {
+        const port = if (irq_num < 8) .PIC1_COMMAND else .PIC2_COMMAND;
+        const mask = @as(u8, @truncate(1 << @as(u3, @truncate(irq_num % 8))));
+        return (arch.inb(port) & mask) != 0;
     }
 };

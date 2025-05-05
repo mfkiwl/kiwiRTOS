@@ -1,7 +1,7 @@
 //! This file provides an architecture-independent IRQ handler abstraction.
 
-const arch = @import("../arch/arch.zig");
 const std = @import("std");
+const arch = @import("../arch/arch.zig");
 
 /// IRQ handler function type
 pub const IrqHandlerFn = *const fn (irq_num: u32) void;
