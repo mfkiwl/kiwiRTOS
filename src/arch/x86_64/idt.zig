@@ -52,21 +52,31 @@ pub const Ist = packed struct {
     reserved: u35 = 0,
 };
 
+// Descriptor Privilege Level (DPL)
+pub const DPL = enum(u2) {
+    /// DPL for kernel code and data
+    KERNEL = 0b00,
+    /// DPL for user code and data
+    USER = 0b11,
+};
+
 // The type of gate the IDT entry represents
 pub const GateType = enum(u4) {
-    GATE_INTERRUPT = 0xE,
-    GATE_TRAP = 0xF,
+    /// Interrupt gate (system call)
+    GATE_INTERRUPT = 0b1110,
+    /// Trap gate (exception)
+    GATE_TRAP = 0b1111,
 };
 
 pub const IdtAttributes = packed struct {
-    /// Gate type (e.g., interrupt gate, trap gate)
-    gate_type: GateType,
-    /// Reserved, should be 0
-    reserved: u1 = 0,
-    /// Descriptor Privilege Level
-    dpl: u2,
     /// Present bit
     present: u1,
+    /// Descriptor Privilege Level (DPL)
+    dpl: DPL,
+    /// Reserved, should be 0
+    reserved: u1 = 0,
+    /// Gate type (e.g., interrupt gate, trap gate)
+    gate_type: GateType,
 };
 
 // IDT Register (IDTR)
@@ -106,7 +116,11 @@ pub const Idt = struct {
     /// Set the IDT entries
     pub fn setEntries(self: *Idt) void {
         for (0..IDT_ENTRIES) |vector| {
-            self.setDescriptor(vector, @intFromPtr(isr_stub_table[vector]), 0x8E);
+            self.setDescriptor(vector, @intFromPtr(isr_stub_table[vector]), IdtAttributes{
+                .present = 1,
+                .dpl = DPL.KERNEL,
+                .gate_type = GateType.GATE_INTERRUPT,
+            });
             self.vectors[vector] = true;
         }
     }
@@ -129,11 +143,11 @@ pub const Idt = struct {
     }
 
     // Set an IDT descriptor entry
-    pub fn setDescriptor(self: *Idt, vector: u8, isr: u64, flags: u8) void {
+    pub fn setDescriptor(self: *Idt, vector: u8, isr: u64, flags: IdtAttributes) void {
         self.entries[vector].isr_low = @truncate(isr & 0xFFFF);
         self.entries[vector].kernel_cs = GDT_KERNEL_CODE_SEGMENT;
         self.entries[vector].ist = 0;
-        self.entries[vector].attributes = flags;
+        self.entries[vector].attributes = @bitCast(flags);
         self.entries[vector].offset_mid = @truncate((isr >> 16) & 0xFFFF);
         self.entries[vector].offset_high = @truncate((isr >> 32) & 0xFFFFFFFF);
     }

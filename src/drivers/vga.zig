@@ -267,7 +267,7 @@ pub const VgaTextDriver = struct {
             },
             // Backspaces should move the cursor back one column
             '\x08' => {
-                while (self.column > 0 and self.getCharAt(self.column - 1, self.row) == '\x00') {
+                while (self.column > 0 and self.getCharAt(self.column, self.row) == '\x00') {
                     self.column -= 1;
                 }
                 self.setCharAt(0, self.column, self.row);
