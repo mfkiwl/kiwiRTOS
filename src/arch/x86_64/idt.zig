@@ -12,14 +12,6 @@ pub const IDT_TRAP_GATE_32 = 0xF;
 
 extern const isr_stub_table: []void;
 
-// Descriptor privilege level (DPL)
-pub const DPL = enum(u2) {
-    /// DPL for kernel code and data
-    KERNEL = 0,
-    /// DPL for user code and data
-    USER = 3,
-};
-
 // Number of entries in the IDT
 pub const IDT_ENTRIES = 256;
 
