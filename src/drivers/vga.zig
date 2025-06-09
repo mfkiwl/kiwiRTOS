@@ -325,4 +325,25 @@ pub const VgaTextDriver = struct {
     pub fn println(self: *VgaTextDriver, comptime format: []const u8, args: anytype) void {
         self.writer().print(format ++ "\n", args) catch unreachable;
     }
+
+    /// Put a character to the VGA buffer with race condition protection
+    pub fn setCharSafe(self: *VgaTextDriver, ch: u8) void {
+        arch.cli(); // Disable interrupts
+        self.setChar(ch);
+        arch.sti(); // Re-enable interrupts
+    }
+
+    /// Update cursor position with race condition protection
+    pub fn updateCursorSafe(self: *const VgaTextDriver) void {
+        arch.cli(); // Disable interrupts
+        self.updateCursor();
+        arch.sti(); // Re-enable interrupts
+    }
+
+    /// Scroll the VGA buffer with race condition protection
+    pub fn scrollSafe(self: *VgaTextDriver) void {
+        arch.cli(); // Disable interrupts
+        self.scroll();
+        arch.sti(); // Re-enable interrupts
+    }
 };

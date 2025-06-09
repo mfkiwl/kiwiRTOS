@@ -3,13 +3,6 @@
 const std = @import("std");
 const arch = @import("arch.zig");
 
-// IDT entry types
-pub const IDT_TASK_GATE = 0x5;
-pub const IDT_INTERRUPT_GATE_16 = 0x6;
-pub const IDT_TRAP_GATE_16 = 0x7;
-pub const IDT_INTERRUPT_GATE_32 = 0xE;
-pub const IDT_TRAP_GATE_32 = 0xF;
-
 extern const isr_stub_table: []void;
 
 // Number of entries in the IDT
@@ -54,6 +47,8 @@ pub const DPL = enum(u2) {
 
 // The type of gate the IDT entry represents
 pub const GateType = enum(u4) {
+    /// Task gate (system call)
+    GATE_TASK = 0b0101,
     /// Interrupt gate (system call)
     GATE_INTERRUPT = 0b1110,
     /// Trap gate (exception)
@@ -108,7 +103,8 @@ pub const Idt = struct {
     /// Set the IDT entries
     pub fn setEntries(self: *Idt) void {
         for (0..IDT_ENTRIES) |vector| {
-            self.setDescriptor(vector, @intFromPtr(isr_stub_table[vector]), IdtAttributes{
+            const addr = @intFromPtr(isr_stub_table[vector]);
+            self.setDescriptor(vector, addr, IdtAttributes{
                 .present = 1,
                 .dpl = DPL.KERNEL,
                 .gate_type = GateType.GATE_INTERRUPT,
