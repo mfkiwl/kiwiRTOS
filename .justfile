@@ -10,28 +10,25 @@ alias db := debug
 alias ch := check
 alias f := format
 alias d := docs
+alias w := wasm
 
 # Default command when 'just' is run without arguments
 default:
   @just --list
 
-# Run a package with specified architecture
-# Usage: just run [arch=x86_64]
+# Run the project with specified architecture
 run arch='x86_64':
   zig build run -Dtarget_arch={{arch}}
 
 # Build the project
-# Usage: just build [arch=x86_64]
 build arch='x86_64':
   zig build -Dtarget_arch={{arch}}
 
 # Build the project
-# Usage: just image [arch=x86_64]
 image arch='x86_64':
   zig build image -Dtarget_arch={{arch}}
 
 # Debug the project
-# Usage: just debug [arch=x86_64]
 debug arch='x86_64':
   zig build debug -Doptimize=Debug -Dtarget_arch={{arch}}
 
@@ -52,3 +49,7 @@ format:
 # Generate documentation
 docs arch='x86_64':
   zig build docs -Dtarget_arch={{arch}}
+
+# Build the project for WASM
+wasm arch='x86_64':
+  cd vendors/qemu-wasm && docker buildx create --use --name qemu-builder || true && docker buildx build --platform linux/$(uname -m) -t buildqemu - < Dockerfile

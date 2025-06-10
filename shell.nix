@@ -20,7 +20,9 @@ in pkgs.mkShell {
     pkgs.qemu # For testing the OS
     pkgs.nixfmt # Nix formatter
     pkgs.parted # Partitioning tool
-    # pkgs.gas # GNU Assembler
+    pkgs.docker # Docker
+    pkgs.rootlesskit # RootlessKit
+    pkgs.container2wasm # Container to WASM converter
 
     # Include GRUB packages
     nativeGrub # Native GRUB (needed for installation on Linux host)
@@ -34,6 +36,14 @@ in pkgs.mkShell {
     # Optionally, display paths for clarity (can be removed if noisy)
     # echo "Native GRUB available at: ${nativeGrub}/bin/grub-install"
     # echo "Cross GRUB available at: ${grubPkgs.grub2}/bin/grub-install"
-    echo "GRUB cross-compilation environment loaded from: $GRUB_DIR"
+    # echo "GRUB cross-compilation environment loaded from: $GRUB_DIR"
+    # export DOCKER_HOST=unix://$XDG_RUNTIME_DIR/docker.sock
+    # fire up a rootless Docker daemon if it isn't running yet
+    if ! pgrep -u "$UID" dockerd-rootless > /dev/null; then
+      echo "🛠  starting rootless dockerd..."
+      dockerd-rootless > /tmp/dockerd-rootless.log 2>&1 &
+    fi
+    export DOCKER_HOST=unix://$XDG_RUNTIME_DIR/docker.sock
+    sleep 2            # tiny pause so the socket appears
   '';
 }
